@@ -14,7 +14,7 @@ import {
  */
 async function getXmlText(file: string) :Promise<string>{
   try {
-    const fileurl = (new URL(file)).href;
+    const fileurl = (new URL(file, window.location.href)).href;
     return fetch(fileurl).then(r => r.text())
   } catch (error) {
     return Promise.resolve(file);
