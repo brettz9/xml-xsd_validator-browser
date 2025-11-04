@@ -8,12 +8,26 @@ import {
 } from 'libxml2-wasm';
 
 /**
+ * to get xml text from url.
+ * @param file url or xml contents
+ * @returns 
+ */
+async function getXmlText(file: string) :Promise<string>{
+  try {
+    const fileurl = (new URL(file)).href;
+    return fetch(fileurl).then(r => r.text())
+  } catch (error) {
+    return Promise.resolve(file);
+  }
+}
+
+/**
  * logic validate xml toward xsd.
- * @param fileurl url
+ * @param file url or xml contents
  * @param mainSchemaUrl url
  * @returns 
  */
-export function validateXmlTowardXsd(fileurl: string, mainSchemaUrl: string): Promise<null | XmlValidateError> {
+export function validateXmlTowardXsd(file: string, mainSchemaUrl: string): Promise<null | XmlValidateError> {
   return new Promise((resolve) => {
     // 1) kumpulkan semua XSD yang mungkin dibutuhkan (rekursif atau list manual)
     findRequiredSchemas(mainSchemaUrl)
@@ -29,7 +43,7 @@ export function validateXmlTowardXsd(fileurl: string, mainSchemaUrl: string): Pr
         // console.log("Provider registered. Provider will answer for:", schemas.map(s => s.filename));
 
         // 3) load XML & main XSD doc (main xsd still parsed from string)
-        fetch(fileurl).then(r => r.text())
+        getXmlText(file)
           .then(async (xmlText) => {
             return fetch(mainSchemaUrl).then(r => r.text())
               .then(mainXsdText => {
