@@ -1,4 +1,4 @@
-**xml-xsd_validator-browser v1.0.0**
+**xml-xsd_validator-browser v1.0.1**
 
 # xml-xsd_validator-browser
 
