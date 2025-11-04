@@ -1,6 +1,6 @@
-**xml-xsd_validator-browser v1.0.1**
+**xml-xsd-validator-browser v1.0.1**
 
-# xml-xsd_validator-browser
+# xml-xsd-validator-browser
 
 A lightweight **XML validator in the browser** using [`libxml2-wasm`](https://github.com/jameslan/libxml2-wasm) with support for **recursive XSD imports/includes/redefines** via a `MapInputProvider`.  
 
@@ -21,7 +21,7 @@ This library allows you to validate XML files against complex XSD schemas that r
 ## Installation
 
 ```bash
-npm i xml-xsd_validator-browser
+npm i xml-xsd-validator-browser
 ```
 
 ## 🧰 Usage Example

@@ -1,5 +1,5 @@
 {
-  "name": "xml-xsd_validator-browser",
+  "name": "xml-xsd-validator-browser",
   "version": "1.0.1",
   "description": "To validate XML file by the XSD. Able to nested XSD by xs:include, xs:redefine, and xs:import which have different namespace.",
   "type": "module",
