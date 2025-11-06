@@ -1,110 +1,145 @@
-import { MapInputProvider } from "./provider/MapInputProvider";
-import { findRequiredSchemas } from "./util/helper";
-import {
-  XmlDocument,
-  XsdValidator as libxml2XsdValidator,
-  XmlValidateError,
-  ErrorDetail,
-} from 'libxml2-wasm';
-
-/**
- * to get xml text from url.
- * @param file url or xml contents
- * @returns xml text
- */
-async function getXmlText(file: string): Promise<string> {
-  if (isXmlLike(file)) {
-    return Promise.resolve(file);
-  } else {
-    const fileurl = (new URL(file, window.location.href)).href;
-    return fetch(fileurl).then(r => r.text())
-  }
-}
-
-// function isRelativeUrl(str: string) {
-//   if (typeof str !== 'string') {
-//     return false; // Not a string, so not a URL
-//   }
-//   // Check if it starts with a protocol (http, https, //) or a common absolute path indicator
-//   if (str.startsWith('http://') || str.startsWith('https://') || str.startsWith('//') || str.startsWith('/')) {
-//     return false; // Likely an absolute URL or absolute path
-//   }
-//   // If it doesn't contain a colon (indicating a protocol) and doesn't start with a slash, it's likely relative
-//   return !str.includes(':');
-// }
-
-function isXmlLike(file: string): boolean {
-  if (typeof file !== 'string') {
-    return false; // Not a string
-  }
-  // Check for common XML elements and structure
-  return file.includes('<') && file.includes('>') &&
-    (file.includes('<?xml') || file.includes('</'));
-}
-
-/**
- * logic validate xml toward xsd.
- * @param file url or xml contents
- * @param mainSchemaUrl url
- * @returns 
- */
-export function validateXmlTowardXsd(file: string, mainSchemaUrl: string): Promise<null | XmlValidateError> {
-  return new Promise((resolve) => {
-    // 1) kumpulkan semua XSD yang mungkin dibutuhkan (rekursif atau list manual)
-    findRequiredSchemas(mainSchemaUrl)
-      .then(schemas => {
-        // 2) buat provider dan register
-        const provider = new MapInputProvider(schemas);
-        const ok = provider.register();
-
-        if (!ok) {
-          console.warn("Warning: xmlRegisterInputProvider returned false");
-        }
-        // for debugging. Log that provider matches expected names
-        // console.log("Provider registered. Provider will answer for:", schemas.map(s => s.filename));
-
-        // 3) load XML & main XSD doc (main xsd still parsed from string)
-        getXmlText(file)
-          .then(async (xmlText) => {
-            return fetch(mainSchemaUrl).then(r => r.text())
-              .then(mainXsdText => {
-                const xmlDoc = XmlDocument.fromString(xmlText);
-                const xsdDoc = XmlDocument.fromString(mainXsdText);
-
-                // 4) create validator fromDoc (parser may use our input provider callbacks)
-                let validator;
-                try {
-                  validator = libxml2XsdValidator.fromDoc(xsdDoc);
-                } catch (err) {
-                  console.error("Failed to parse XSD:", err);
-                  provider.cleanup();
-                  return;
-                }
-
-                // 5) validate
-                try {
-                  validator.validate(xmlDoc);
-                  resolve(null);
-                  // console.log("XML valid ✅");
-                } catch (err: any) {
-                  const e = XmlValidateError.fromDetails([err as ErrorDetail]) as XmlValidateError;
-                  resolve(e as XmlValidateError)
-                  // console.error("Validation errors:", e.details);
-                } finally {
-                  // 6) cleanup provider when done
-                  provider.cleanup();
-                }
-              })
-          })
-      })
-  })
-}
+// import { MapInputProvider } from "./provider/MapInputProvider";
+import { validateWellForm } from "./validateFormWell";
+import { ValidationInfo, ValidationPayload, WorkerBags, WorkerPayload, WorkerResponse, WorkerStatusDone, WorkerStatusError } from "./types";
+import { validateXmlTowardXsd } from "./validateTowardXsd";
+import RunnerWorker from "./worker/runner.worker.ts?worker";
 
 /**
  * TBD
  * ini akan memvalidate xml berdasarkan namespace
  * xsi:schemaLocation may contain two xsd, eg. xsi:schemaLocation="namespace1 xsd1 namespace2 xsd2"
  */
-export function validateXml(){
+export async function validateXml(xmlText: string, mainSchemaUrl: string | null = null, stopOnFailure: boolean = true): Promise<ValidationInfo[]> {
+  const errors: ValidationInfo[] = [];
+  return validateWellForm(xmlText)
+    .then((validateWellFormInfos): ValidationInfo[] | Promise<ValidationInfo[]> => {
+      errors.push(...validateWellFormInfos);
+      if (!stopOnFailure || (errors.length < 1)) {
+        return validateXmlTowardXsd(xmlText, mainSchemaUrl, stopOnFailure)
+          .then((validateXmlTowardXsdInfos) => {
+            if (validateXmlTowardXsdInfos) {
+              errors.push(...validateXmlTowardXsdInfos)
+            }
+            return errors;
+          })
+      }
+      return errors;
+    })
+}
 
+// /**
+//  * @deprecated karena tidak ada temrinatenya
+//  */
+// export async function validateXmlByWorker(xmlText: string, mainSchemaUrl: string | null = null, stopOnFailure: boolean = true): Promise<ValidationInfo[]> {
+//   return new Promise((resolve, reject) => {
+//     if (self.Worker) {
+//       const worker = new RunnerWorker();
+//       worker.onmessage = (e: MessageEvent) => {
+//         resolve(e.data);
+//       }
+//       worker.postMessage({ xmlText, mainSchemaUrl })
+//     } else {
+//       const data: ValidationInfo = {
+//         name: "WorkerRuntimeError",
+//         type: "none",
+//         details: {
+//           message: "Failed to create worker in your browser",
+//           file: "",
+//           line: 1,
+//           col: 1
+//         }
+//       }
+//       reject([data])
+//     }
+//   })
+// }
+
+function reactiveStatus(init:string) {
+  let value = init;
+  let listeners:Function[] = [];
+
+  return {
+    get value() {
+      return value;
+    },
+    set value(v) {
+      value = v;
+      listeners.forEach(fn => fn(v));
+    },
+    reset(){
+      listeners = [];
+    },
+    watch(fn:Function) {
+      listeners.push(fn);
+    },
+    when(predicate:Function) {
+      return new Promise(resolve => {
+        if (predicate(value)) resolve(value);
+        else this.watch((v:any) => predicate(v) && resolve(v));
+      });
+    }
+  };
+}
+
+// contoh:
+// const wstatus = reactiveStatus("working");
+// let s1:any = wstatus.when(v => v !== "working").then(v => s1 = v);
+// wstatus.value = "done"; // ✅ langsung resolve
+
+export function useWorker() {
+  if (!self.Worker) {
+    return undefined;
+  }
+  const runnerWorker = new RunnerWorker();
+  // let wstatus: WorkerStatus = "done";
+  let wstatus = reactiveStatus("done");
+  const _result: WorkerBags = [];
+
+  runnerWorker.onmessage = (e: MessageEvent<WorkerResponse>) => {
+    _result.splice(0, _result.length);
+    console.log(e.data)
+    if(e.data.status) {
+      _result.push(...(e.data as WorkerResponse).bags);
+      wstatus.value = "done";
+    }
+  }
+
+  // runnerWorker.onerror = (e: MessageEvent) => {
+  //   wstatus.value = "error";
+  //   _result.splice(0, _result.length);
+  // }
+
+  const terminate = () => {
+    const payload: WorkerPayload<any> = {
+      id: crypto.randomUUID(),
+      type: "terminate",
+      payload: null
+    }
+    runnerWorker.postMessage(payload);
+    runnerWorker.terminate();
+  }
+
+  const validate = (xmlText: string, mainSchemaUrl: string | null, stopOnFailure: boolean = true) => {
+    wstatus.value = "working";
+    _result.splice(0, _result.length);
+
+    const payload: WorkerPayload<ValidationPayload> = {
+      id: crypto.randomUUID(),
+      type: "validate",
+      payload: { xmlText, mainSchemaUrl }
+    }
+    runnerWorker.postMessage(payload)
+  }
+
+  const status = ():Promise<WorkerStatusDone | WorkerStatusError> => {
+    let variable;
+    return variable = wstatus.when((v:any) => v !== "working").then(v => variable = v) as Promise<WorkerStatusDone | WorkerStatusError>;
+  }
+
+  const result = () => {
+    return _result
+  }
+  return {
+    status, result, validate, terminate
+  }
 }

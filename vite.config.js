@@ -7,4 +7,8 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"), // Example alias for 'src' directory
     },
   },
+  worker: {
+    format: 'es', // Ensures the worker is built as an ES module
+    // plugins: [ /* worker-specific plugins */ ]
+  },
 });

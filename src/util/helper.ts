@@ -4,11 +4,15 @@
  * 
  * Tidak menggunakan async/await, seluruhnya Promise chaining.
  * Menangani error dengan console.error, tetap resolve agar tidak menghentikan chain.
+ * array index 0 adalah mainSchemaUrl
  */
+
+import { Schema } from "../types";
+
 export async function findRequiredSchemas(
   mainSchemaUrl: string,
   visited = new Set<string>()
-): Promise<{ filename: string; contents: string }[]> {
+): Promise<Schema[]> {
   if (visited.has(mainSchemaUrl)) {
     return Promise.resolve([]);
   }
@@ -45,6 +49,63 @@ export async function findRequiredSchemas(
     .catch((err) => {
       console.error("findRequiredSchemas error:", err);
       // Jangan throw lagi — tetap resolve agar proses tidak berhenti
-      return [];
+      return err;
     });
 }
+
+/**
+ * Ambil URL schema dari atribut `xsi:noNamespaceSchemaLocation`
+ * atau `xsi:schemaLocation`.
+ */
+export function extractSchemaLocation(xmlText: string): string | null {
+  // Cari noNamespaceSchemaLocation
+  const noNsMatch = xmlText.match(
+    /\b[a-zA-Z0-9]+:noNamespaceSchemaLocation\s*=\s*["']([^"']+)["']/i
+  );
+  if (noNsMatch) return noNsMatch[1];
+
+  // Cari schemaLocation (bisa punya banyak pasangan namespace + URL)
+  const schemaLocMatch = xmlText.match(
+    /\bxsi:schemaLocation\s*=\s*["']([^"']+)["']/i
+  );
+
+  if (schemaLocMatch) {
+    // schemaLocation bisa berisi banyak pasangan:
+    // "ns1 url1 ns2 url2 ..." → ambil semua URL yang kelihatan valid
+    const parts = schemaLocMatch[1].trim().split(/\s+/);
+    const urls = parts.filter(p => /^https?:\/\/|\.xsd$/i.test(p));
+    return urls[0] || null;
+  }
+
+  // Tidak ditemukan
+  return null;
+}
+
+/**
+ * to check wheter the param is xml text or url
+ * @param file url or xml text file
+ * @returns 
+ */
+export function isXmlLike(file: string): boolean {
+  if (typeof file !== 'string') {
+    return false; // Not a string
+  }
+  // Check for common XML elements and structure
+  return file.includes('<') && file.includes('>') &&
+    (file.includes('<?xml') || file.includes('</'));
+}
+
+/**
+ * to get xml text from url.
+ * @param file url or xml contents
+ * @returns xml text
+ */
+export async function getXmlText(file: string): Promise<string> {
+  if (isXmlLike(file)) {
+    return Promise.resolve(file);
+  } else {
+    const fileurl = (new URL(file, window.location.href)).href;
+    return fetch(fileurl).then(r => r.text())
+  }
+}
+

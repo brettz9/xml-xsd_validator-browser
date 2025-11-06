@@ -3,14 +3,15 @@
 // =========================
 
 // Re-export semua yang ingin diekspos dari library
-export { MapInputProvider } from './provider/MapInputProvider';
-export { findRequiredSchemas } from './util/helper';
+export { createMapInputProvider } from './provider/MapInputProvider';
+export { findRequiredSchemas, extractSchemaLocation, getXmlText, isXmlLike } from './util/helper';
 
 // Jika kamu ingin mengekspor juga fungsionalitas validate secara langsung
-export * from './validate';
+export { validateXml, useWorker } from './validate';
+export { validateWellForm } from "./validateFormWell"
+export { validateXmlTowardXsd } from "./validateTowardXsd"
 
-export {
-  XmlDocument,
-  XsdValidator,
-  XmlValidateError
-} from 'libxml2-wasm';
+// Jika ingin custom dengan libXml2
+export { ensureLibxml2Loaded, useLibXml2 } from "./libxmlloader";
+
+export * from "./types";
