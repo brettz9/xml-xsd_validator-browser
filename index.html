@@ -164,7 +164,17 @@ import { useWorker, validateXml } from "../src/validate";
 
 // Example 1: quick validate (throws on error)
 function test1() {
-  const xmlText = `<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE dmodule >\n<dmodule xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:dc="http://www.purl.org/dc/elements/1.1/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:xlink="http://www.w3.org/1999/xlink" xsi:noNamespaceSchemaLocation="https://ferdisap.github.io/schema/s1000d/S1000D_5-0/xml_schema_flat/appliccrossreftable.xsd"><identAndStatusSection></identAndStatusSection></dmodule>`;
+   const xmlText = 
+   `&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+    &lt;!DOCTYPE dmodule &gt;
+    &lt;dmodule 
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xmlns:dc="http://www.purl.org/dc/elements/1.1/"
+      xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+      xmlns:xlink="http://www.w3.org/1999/xlink"
+      xsi:noNamespaceSchemaLocation="https://ferdisap.github.io/schema/s1000d/S1000D_5-0/xml_schema_flat/appliccrossreftable.xsd"&gt;
+      &lt;identAndStatusSection&gt;&lt;/identAndStatusSection&gt;
+    &lt;/dmodule&gt;`;
 
   validateXml(xmlText)
     .catch(err => {
@@ -175,21 +185,20 @@ function test1() {
 
 // Example 2: using a worker to validate (non-blocking)
 async function test2() {
-  const xmlText = `<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE dmodule >\n<dmodule>\n  <identAndStatusSection></identAndStatusSection>\n</dmodule>`;
+  const xmlText =
+  `&lt;?xml version="1.0" encoding="UTF-8"?&gt;&lt;!DOCTYPE dmodule &gt;
+  &lt;dmodule&gt;
+    &lt;identAndStatusSection&gt;&lt;/identAndStatusSection&gt;
+  &lt;/dmodule&gt;`;
 
-  const mainSchemaUrl = "https://ferdisap.github.io/schema/s1000d/S1000D_5-0/xml_schema_flat/appliccrossreftable.xsd";
+  const mainSchemaUrl = "http://www.s1000d.org/S1000D_5-0/xml_schema_flat/appliccrossreftable.xsd"; // CORS
 
   const { validate, terminate } = useWorker();
 
   validate(xmlText, mainSchemaUrl)
-    .then(response => {
-      // When resolved it returns object { id, status, bags }
-      console.log('Worker response:', response);
-      terminate();
-    })
     .catch(err => {
       // err is an array of XMLValidateError objects
-      console.error('Worker validation failed:', err);
+      console.error('Worker validation failed:', err); // "Fetch Error" because CORS
       terminate();
     });
 }

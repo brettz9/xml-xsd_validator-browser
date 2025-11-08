@@ -23,9 +23,14 @@ function appendToHTML(idEl: string, errors: ValidationInfo[]) {
 
 function test1() {
   const xmlText =
-    `<?xml version="1.0" encoding="UTF-8"?>
+  `<?xml version="1.0" encoding="UTF-8"?>
   <!DOCTYPE dmodule >
-  <dmodule xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:dc="http://www.purl.org/dc/elements/1.1/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:xlink="http://www.w3.org/1999/xlink" xsi:noNamespaceSchemaLocation="https://ferdisap.github.io/schema/s1000d/S1000D_5-0/xml_schema_flat/appliccrossreftable.xsd">
+  <dmodule
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+    xmlns:dc="http://www.purl.org/dc/elements/1.1/" 
+    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" 
+    xmlns:xlink="http://www.w3.org/1999/xlink" 
+    xsi:noNamespaceSchemaLocation="https://ferdisap.github.io/schema/s1000d/S1000D_5-0/xml_schema_flat/appliccrossreftable.xsd">
     <identAndStatusSection></identAndStatusSection>
   </dmodule>`;
   validateXml(xmlText)
@@ -34,7 +39,7 @@ function test1() {
       appendToHTML("for_test_1", bags);
     })
 }
-// test1()
+test1()
 
 async function test2() {
   const xmlText =
@@ -42,7 +47,6 @@ async function test2() {
   <dmodule>
     <identAndStatusSection></identAndStatusSection>
   </dmodule>`;
-  // const mainSchemaUrl = "https://ferdisap.github.io/schema/s1000d/S1000D_5-0/xml_schema_flat/appliccrossreftable.xsd";
   const mainSchemaUrl = "http://www.s1000d.org/S1000D_5-0/xml_schema_flat/appliccrossreftable.xsd"; // CORS
 
   const { validate, terminate } = useWorker()
@@ -50,13 +54,13 @@ async function test2() {
     // never get resolved if the file is valid
     .then((response:WorkerResponse) => {
       const { id, status, bags } = response;
-      console.log(id, status, bags) // returning array contains object has name:"XMLValidateError"
+      console.log(id, status, bags) 
       appendToHTML("for_test_2", bags);
     })
     .catch((response:WorkerResponse) => {
       const { id, status, bags } = response;
       console.log(id, status, bags)
-      appendToHTML("for_test_2", bags);
+      appendToHTML("for_test_2", bags); // returning array contains object has name:"Fetch Error" because CORS
       terminate()
     })
 
