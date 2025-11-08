@@ -33,6 +33,12 @@ npm i xml-xsd-validator-browser
 
 ## 🧰 Usage Example
 
+1. clone this repository.
+2. run `` npm install && npm run vite:build:test ``
+3. open the ``index.html``
+
+### or you use this code below
+
 ```ts
 import { extractSchemaLocation, getXmlText } from "../src/util/helper";
 import { useWorker, validateXml } from "../src/validate";

@@ -8,7 +8,7 @@
 
 > **createMapInputProvider**(`map`): `Promise`\<[`MapInputProvider`](../type-aliases/MapInputProvider.md)\>
 
-Defined in: [provider/MapInputProvider.ts:15](https://github.com/ferdisap/xml-xsd_validator-browser/blob/b482e38d60b39bc7373395cd63a57a05c051aa84/src/provider/MapInputProvider.ts#L15)
+Defined in: [provider/MapInputProvider.ts:15](https://github.com/ferdisap/xml-xsd_validator-browser/blob/15013a0b67901b9c2916e2f1f34f83fdae60005f/src/provider/MapInputProvider.ts#L15)
 
 Create a virtual file provider for libxml2-wasm.
 It maps filenames (or URLs) to in-memory schema contents,

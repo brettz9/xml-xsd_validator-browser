@@ -8,7 +8,7 @@
 
 > **ensureLibxml2Loaded**(): `Promise`\<`unknown`\>
 
-Defined in: [libxml/libxmlloader.ts:19](https://github.com/ferdisap/xml-xsd_validator-browser/blob/b482e38d60b39bc7373395cd63a57a05c051aa84/src/libxml/libxmlloader.ts#L19)
+Defined in: [libxml/libxmlloader.ts:19](https://github.com/ferdisap/xml-xsd_validator-browser/blob/15013a0b67901b9c2916e2f1f34f83fdae60005f/src/libxml/libxmlloader.ts#L19)
 
 ## Returns
 

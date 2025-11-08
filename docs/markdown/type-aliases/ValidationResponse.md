@@ -8,7 +8,7 @@
 
 > **ValidationResponse** = `object`
 
-Defined in: [types/types.ts:108](https://github.com/ferdisap/xml-xsd_validator-browser/blob/b482e38d60b39bc7373395cd63a57a05c051aa84/src/types/types.ts#L108)
+Defined in: [types/types.ts:108](https://github.com/ferdisap/xml-xsd_validator-browser/blob/15013a0b67901b9c2916e2f1f34f83fdae60005f/src/types/types.ts#L108)
 
 🔹 Respons hasil proses validasi XML.
 
@@ -18,7 +18,7 @@ Defined in: [types/types.ts:108](https://github.com/ferdisap/xml-xsd_validator-b
 
 > **status**: [`SimpleWorkerStatus`](SimpleWorkerStatus.md)
 
-Defined in: [types/types.ts:110](https://github.com/ferdisap/xml-xsd_validator-browser/blob/b482e38d60b39bc7373395cd63a57a05c051aa84/src/types/types.ts#L110)
+Defined in: [types/types.ts:110](https://github.com/ferdisap/xml-xsd_validator-browser/blob/15013a0b67901b9c2916e2f1f34f83fdae60005f/src/types/types.ts#L110)
 
 Status sederhana (`true` untuk sukses, `false` untuk gagal)
 
@@ -28,6 +28,6 @@ Status sederhana (`true` untuk sukses, `false` untuk gagal)
 
 > **bags**: [`WorkerBags`](WorkerBags.md)
 
-Defined in: [types/types.ts:113](https://github.com/ferdisap/xml-xsd_validator-browser/blob/b482e38d60b39bc7373395cd63a57a05c051aa84/src/types/types.ts#L113)
+Defined in: [types/types.ts:113](https://github.com/ferdisap/xml-xsd_validator-browser/blob/15013a0b67901b9c2916e2f1f34f83fdae60005f/src/types/types.ts#L113)
 
 Daftar informasi validasi

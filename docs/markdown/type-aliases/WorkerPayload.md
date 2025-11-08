@@ -8,7 +8,7 @@
 
 > **WorkerPayload**\<`TData`\> = `object`
 
-Defined in: [types/types.ts:33](https://github.com/ferdisap/xml-xsd_validator-browser/blob/b482e38d60b39bc7373395cd63a57a05c051aa84/src/types/types.ts#L33)
+Defined in: [types/types.ts:33](https://github.com/ferdisap/xml-xsd_validator-browser/blob/15013a0b67901b9c2916e2f1f34f83fdae60005f/src/types/types.ts#L33)
 
 🔹 Payload yang dikirim ke worker untuk diproses.
 
@@ -26,7 +26,7 @@ Data spesifik yang dikirim ke worker.
 
 > **id**: [`PayloadId`](PayloadId.md)
 
-Defined in: [types/types.ts:35](https://github.com/ferdisap/xml-xsd_validator-browser/blob/b482e38d60b39bc7373395cd63a57a05c051aa84/src/types/types.ts#L35)
+Defined in: [types/types.ts:35](https://github.com/ferdisap/xml-xsd_validator-browser/blob/15013a0b67901b9c2916e2f1f34f83fdae60005f/src/types/types.ts#L35)
 
 ID unik (UUID) payload
 
@@ -36,6 +36,6 @@ ID unik (UUID) payload
 
 > **payload**: `TData`
 
-Defined in: [types/types.ts:38](https://github.com/ferdisap/xml-xsd_validator-browser/blob/b482e38d60b39bc7373395cd63a57a05c051aa84/src/types/types.ts#L38)
+Defined in: [types/types.ts:38](https://github.com/ferdisap/xml-xsd_validator-browser/blob/15013a0b67901b9c2916e2f1f34f83fdae60005f/src/types/types.ts#L38)
 
 Isi data aktual yang akan diproses oleh worker

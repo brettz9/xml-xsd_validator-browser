@@ -8,7 +8,7 @@
 
 > **isXmlLike**(`file`): `boolean`
 
-Defined in: [util/helper.ts:89](https://github.com/ferdisap/xml-xsd_validator-browser/blob/b482e38d60b39bc7373395cd63a57a05c051aa84/src/util/helper.ts#L89)
+Defined in: [util/helper.ts:89](https://github.com/ferdisap/xml-xsd_validator-browser/blob/15013a0b67901b9c2916e2f1f34f83fdae60005f/src/util/helper.ts#L89)
 
 to check wheter the param is xml text or url
 
