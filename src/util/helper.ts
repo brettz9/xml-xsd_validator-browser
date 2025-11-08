@@ -43,7 +43,7 @@ export async function findRequiredSchemas(
       )
         .then((nestedSchemasArrays) => {
           const nestedSchemas = nestedSchemasArrays.flat();
-          return [{ filename: mainSchemaUrl, contents: text }, ...nestedSchemas];
+          return Promise.resolve([{ filename: mainSchemaUrl, contents: text }, ...nestedSchemas]);
         });
     })
     .catch((err) => {
