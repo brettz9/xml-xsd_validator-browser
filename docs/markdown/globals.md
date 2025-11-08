@@ -1,8 +1,12 @@
-[**xml-xsd-validator-browser v1.0.4**](README.md)
+[**xml-xsd-validator-browser v1.0.5**](README.md)
 
 ***
 
-# xml-xsd-validator-browser v1.0.4
+# xml-xsd-validator-browser v1.0.5
+
+## Interfaces
+
+- [ViteWorkerPluginOptions](interfaces/ViteWorkerPluginOptions.md)
 
 ## Type Aliases
 
@@ -24,6 +28,8 @@
 
 - [ensureLibxml2Loaded](functions/ensureLibxml2Loaded.md)
 - [useLibXml2](functions/useLibXml2.md)
+- [ignoreModuleImportPlugin](functions/ignoreModuleImportPlugin.md)
+- [viteWorkerPlugin](functions/viteWorkerPlugin.md)
 - [createMapInputProvider](functions/createMapInputProvider.md)
 - [findRequiredSchemas](functions/findRequiredSchemas.md)
 - [extractSchemaLocation](functions/extractSchemaLocation.md)

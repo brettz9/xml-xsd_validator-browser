@@ -1,20 +1,24 @@
 import { defineConfig } from "vite";
 import path from "path";
-import wasm from "vite-plugin-wasm";
-import topLevelAwait from "vite-plugin-top-level-await";
 
 export default defineConfig({
-  plugins: [
-    wasm(),
-    topLevelAwait()
-  ],
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"), // Example alias for 'src' directory
+      "@": path.resolve(__dirname, "./src"),
     },
   },
   worker: {
-    format: 'es', // Ensures the worker is built as an ES module
-    // plugins: [ /* worker-specific plugins */ ]
+    format: "es", // pastikan module
   },
+  // build: {
+  //   outDir: "test/build", // hasil utama
+  //   rollupOptions: {
+  //     output: {
+  //       // ⚙️ Ganti path output worker agar tidak di folder "assets"
+  //       assetFileNames: "[name][extname]",
+  //       chunkFileNames: "[name].js",
+  //       entryFileNames: "[name].js", // tanpa hash
+  //     },
+  //   },
+  // },
 });

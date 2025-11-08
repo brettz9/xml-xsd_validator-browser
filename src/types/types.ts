@@ -19,6 +19,9 @@ export type WorkerResponse = {
   /** Status dari proses validasi */
   status: ValidationResponse["status"];
 
+  /** Status worker ready menerima message atau tidak */
+  ready?: boolean;
+
   /** Kumpulan hasil validasi */
   bags: ValidationResponse["bags"];
 };
@@ -65,7 +68,8 @@ export type ErrorName =
   | "XMLValidateError"
   | "ParseTimeout"
   | "LibInitError"
-  | "RegisteringProviderError";
+  | "RegisteringProviderError" 
+  | "WorkerResponseTimeout";
 
 /**
  * 🔹 Jenis validasi XML yang sedang dilakukan.

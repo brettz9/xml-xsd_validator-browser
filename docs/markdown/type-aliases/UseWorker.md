@@ -1,4 +1,4 @@
-[**xml-xsd-validator-browser v1.0.4**](../README.md)
+[**xml-xsd-validator-browser v1.0.5**](../README.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **UseWorker** = `object`
 
-Defined in: [types/types.ts:41](https://github.com/ferdisap/xml-xsd_validator-browser/blob/490baa48e5f31f6e979784148fbc24d41953b6e2/src/types/types.ts#L41)
+Defined in: [types/types.ts:44](https://github.com/ferdisap/xml-xsd_validator-browser/blob/b482e38d60b39bc7373395cd63a57a05c051aa84/src/types/types.ts#L44)
 
 🔹 Interface utama untuk menggunakan worker di sisi main thread.
 
@@ -18,7 +18,7 @@ Defined in: [types/types.ts:41](https://github.com/ferdisap/xml-xsd_validator-br
 
 > **validate**(`xmlText`, `mainSchemaUrl`, `stopOnFailure?`): `Promise`\<[`WorkerResponse`](WorkerResponse.md)\>
 
-Defined in: [types/types.ts:49](https://github.com/ferdisap/xml-xsd_validator-browser/blob/490baa48e5f31f6e979784148fbc24d41953b6e2/src/types/types.ts#L49)
+Defined in: [types/types.ts:52](https://github.com/ferdisap/xml-xsd_validator-browser/blob/b482e38d60b39bc7373395cd63a57a05c051aa84/src/types/types.ts#L52)
 
 Jalankan proses validasi XML terhadap XSD.
 
@@ -54,7 +54,7 @@ Promise yang mengembalikan hasil berupa `WorkerResponse`.
 
 > **terminate**(): `void`
 
-Defined in: [types/types.ts:54](https://github.com/ferdisap/xml-xsd_validator-browser/blob/490baa48e5f31f6e979784148fbc24d41953b6e2/src/types/types.ts#L54)
+Defined in: [types/types.ts:57](https://github.com/ferdisap/xml-xsd_validator-browser/blob/b482e38d60b39bc7373395cd63a57a05c051aa84/src/types/types.ts#L57)
 
 Terminasi worker agar berhenti bekerja dan melepaskan resource.
 

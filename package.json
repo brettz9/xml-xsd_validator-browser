@@ -1,7 +1,7 @@
 {
   "name": "xml-xsd-validator-browser",
-  "version": "1.0.4",
-  "description": "To validate XML file by the XSD. Able to nested XSD by xs:include, xs:redefine, and xs:import which have different namespace. Now it is able to run in web worker and better user experience.",
+  "version": "1.0.5",
+  "description": "To validate XML file by the XSD. Able to nested XSD by xs:include, xs:redefine, and xs:import which have different namespace. Now it is able to run in web worker and better user experience. It has been tested in dev and build package.",
   "type": "module",
   "main": "./dist/esm/index.js",
   "module": "./dist/esm/index.js",
@@ -10,6 +10,10 @@
     ".": {
       "import": "./dist/esm/index.js",
       "require": "./dist/cjs/index.js"
+    },
+    "./plugins": {
+      "import": "./dist/plugins/index.js",
+      "types": "./dist/plugins/index.d.ts"
     }
   },
   "files": [
@@ -19,7 +23,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -p tsconfig.esm.json",
-    "test": "node test/build-test.js",
+    "build:test": "node build-test.js",
+    "vite:build:test": "vite build --config vite.test.config.js",
     "prepare": "npm run build",
     "docs:md": "typedoc --plugin typedoc-plugin-markdown --out docs/markdown",
     "docs:html": "typedoc --out docs/html",
@@ -43,9 +48,7 @@
   },
   "homepage": "https://github.com/ferdisap/xml-xsd_validator-browser#readme",
   "dependencies": {
-    "libxml2-wasm": "0.6.0",
-    "vite-plugin-top-level-await": "^1.6.0",
-    "vite-plugin-wasm": "^3.5.0"
+    "libxml2-wasm": "0.6.0"
   },
   "devDependencies": {
     "@types/node": "^24.10.0",

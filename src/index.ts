@@ -15,3 +15,7 @@ export { validateXmlTowardXsd } from "./validateTowardXsd"
 export { ensureLibxml2Loaded, useLibXml2 } from "./libxml/libxmlloader";
 
 export * from "./types/types";
+
+// untuk plugins vite
+export * from "./plugins/viteWorkerPlugin";
+export * from "./plugins/esBuildIgnoreModuleImportPlugin";

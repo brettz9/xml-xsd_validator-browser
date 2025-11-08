@@ -2,7 +2,7 @@ import { validateWellForm } from "./validateFormWell";
 import { UseWorker, ValidationInfo, ValidationPayload, WorkerPayload, WorkerResponse } from "./types/types";
 import { validateXmlTowardXsd } from "./validateTowardXsd";
 // import * as ValidatorWorker from "./worker/validator.worker?worker";
-// import ValidatorWorker from "./worker/validator.worker?worker";
+import ValidatorWorker from "./worker/validator.worker?worker";
 
 
 // validate.ts (your library)
@@ -75,50 +75,79 @@ export function useWorker(): UseWorker {
   >();
 
   // const validatorWorker = new ValidatorWorker();
-  let validatorWorker: Worker | null;
-  const validatorWorkerCreate = new Promise(async (r) => {
-    validatorWorker = await createValidatorWorker();
-    validatorWorker!.onmessage = (e: MessageEvent<WorkerResponse>) => {
-      const { id, status, bags } = e.data;
-      if (status) {
-        if (_responses.has(id)) {
-          const { resolve } = _responses.get(id)!;
-          resolve({ id, status, bags });
-          _responses.delete(id)
-  
-        }
-      } else {
-        const { reject } = _responses.get(id)!;
-        reject({ id, status, bags });
-        _responses.delete(id)
-      }
-    }
-  
-    validatorWorker!.onerror = function (e: ErrorEvent) {
-      throw new Error("Worker error");
-    }
-    return r(validatorWorker);
-  })
+  // let validatorWorker: Worker | null;
+  let validatorWorker: Worker = new ValidatorWorker();
 
+  let _resolveReady: (v: any) => void;
+  const readyPromise = new Promise((resolve) => (_resolveReady = resolve));
+
+  validatorWorker!.onmessage = (e: MessageEvent<WorkerResponse>) => {
+    console.log("✅ Worker message:", e.data);
+    if (e.data.ready) {
+      console.log("[xml-xsd-validator-browser] Worker is ready ✅");
+      _resolveReady(true);
+      return;
+    };
+    const { id, status, bags } = e.data;
+    if (status) {
+      if (_responses.has(id)) {
+        const { resolve } = _responses.get(id)!;
+        resolve({ id, status, bags });
+        _responses.delete(id)
+
+      }
+    } else {
+      const { reject } = _responses.get(id)!;
+      reject({ id, status, bags });
+      _responses.delete(id)
+    }
+  }
+
+  validatorWorker.onmessageerror = (e) => {
+    console.error("⚠️ Worker message error:", e);
+  };
+
+
+  validatorWorker!.onerror = async function (e: ErrorEvent) {
+    throw new Error("Worker error");
+  }
 
   const terminate = async () => {
-    if (!validatorWorker) await validatorWorkerCreate;
     validatorWorker!.terminate();
+    console.log("[xml-xsd-validator-browser] Worker is terminated ✅");
 
   }
 
   const validate = async (xmlText: string, mainSchemaUrl: string | null, stopOnFailure: boolean = true): Promise<WorkerResponse> => {
-    if (!validatorWorker) await validatorWorkerCreate;
+    console.log("before validate by worker");
     const id = crypto.randomUUID();
 
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
       _responses.set(id, { resolve, reject });
-
-      const payload: WorkerPayload<ValidationPayload> = {
-        id,
-        payload: { xmlText, mainSchemaUrl, stopOnFailure }
+      setTimeout(() => {
+        const response = {
+          id, status: false, bags: [{
+            name: "WorkerResponseTimeout",
+            type: "none",
+            detail: {
+              message: "",
+              file: "",
+              line: 1,
+              col: 1,
+            }
+          }]
+        };
+        console.error("⚠️ Worker response timeout");
+        return reject(response);
+      }, 5000);
+      if (await readyPromise) {
+        const payload: WorkerPayload<ValidationPayload> = {
+          id,
+          payload: { xmlText, mainSchemaUrl, stopOnFailure }
+        }
+        console.log("before post to worker");
+        validatorWorker!.postMessage(payload)
       }
-      validatorWorker!.postMessage(payload)
     })
   }
 
