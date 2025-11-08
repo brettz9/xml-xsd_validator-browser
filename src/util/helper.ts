@@ -49,7 +49,7 @@ export async function findRequiredSchemas(
     .catch((err) => {
       console.error("findRequiredSchemas error:", err);
       // Jangan throw lagi — tetap resolve agar proses tidak berhenti
-      return err;
+      return Promise.reject([]);
     });
 }
 
