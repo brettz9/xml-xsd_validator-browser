@@ -1,6 +1,6 @@
 import { ErrorDetail, XsdValidator } from "libxml2-wasm";
 import { createMapInputProvider } from "./provider/MapInputProvider";
-import { MapInputProvider, Schema, WorkerBags } from "./types";
+import { MapInputProvider, Schema, WorkerBags } from "./types/types";
 import { extractSchemaLocation, findRequiredSchemas, getXmlText } from "./util/helper";
 import { useLibXml2 } from "./libxml/libxmlloader";
 

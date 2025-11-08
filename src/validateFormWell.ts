@@ -1,5 +1,5 @@
 import { useLibXml2 } from "./libxml/libxmlloader";
-import { WorkerBags } from "./types";
+import { WorkerBags } from "./types/types";
 
 /**
  * ✅ Validasi XML hanya untuk memastikan well-formed

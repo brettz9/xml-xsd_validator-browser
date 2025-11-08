@@ -7,7 +7,7 @@
  * array index 0 adalah mainSchemaUrl
  */
 
-import { Schema } from "../types";
+import { Schema } from "../types/types";
 
 export async function findRequiredSchemas(
   mainSchemaUrl: string,

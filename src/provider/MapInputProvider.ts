@@ -4,7 +4,7 @@
 // } from "libxml2-wasm";
 
 import { useLibXml2 } from "../libxml/libxmlloader";
-import { MapInputProvider, Schema } from "../types";
+import { MapInputProvider, Schema } from "../types/types";
 
 /**
  * Create a virtual file provider for libxml2-wasm.

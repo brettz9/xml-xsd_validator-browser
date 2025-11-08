@@ -1,7 +1,17 @@
 import { validateWellForm } from "./validateFormWell";
-import { UseWorker, ValidationInfo, ValidationPayload, WorkerPayload, WorkerResponse } from "./types";
+import { UseWorker, ValidationInfo, ValidationPayload, WorkerPayload, WorkerResponse } from "./types/types";
 import { validateXmlTowardXsd } from "./validateTowardXsd";
-import ValidatorWorker from "./worker/validator.worker?worker";
+import * as ValidatorWorker from "./worker/validator.worker?worker";
+// import ValidatorWorker from "./worker/validator.worker?worker";
+
+
+// validate.ts (your library)
+export async function createValidatorWorker(): Promise<Worker> {
+  // dynamically import the worker if bundler supports it
+  // works for Vite and esbuild
+  const WorkerConstructor = (await import("./worker/validator.worker?worker")).default;
+  return new WorkerConstructor();
+}
 
 /**
  * TBD, akan memvalidate xml berdasarkan namespace
@@ -58,48 +68,56 @@ export async function validateXml(xmlText: string, mainSchemaUrl: string | null 
 // wstatus.value = "done"; // ✅ langsung resolve
 
 export function useWorker(): UseWorker {
-  const validatorWorker = new ValidatorWorker();
   const _responses = new Map<
     string,
     { resolve: (res: WorkerResponse) => void; reject: (err?: any) => void }
   >();
 
-  validatorWorker.onmessage = (e: MessageEvent<WorkerResponse>) => {
-    const { id, status, bags } = e.data;
-    if (status) {
-      if (_responses.has(id)) {
-        const { resolve } = _responses.get(id)!;
-        resolve({ id, status, bags });
+  // const validatorWorker = new ValidatorWorker();
+  let validatorWorker: Worker | null;
+  const validatorWorkerCreate = new Promise(async (r) => {
+    validatorWorker = await createValidatorWorker();
+    validatorWorker!.onmessage = (e: MessageEvent<WorkerResponse>) => {
+      const { id, status, bags } = e.data;
+      if (status) {
+        if (_responses.has(id)) {
+          const { resolve } = _responses.get(id)!;
+          resolve({ id, status, bags });
+          _responses.delete(id)
+  
+        }
+      } else {
+        const { reject } = _responses.get(id)!;
+        reject({ id, status, bags });
         _responses.delete(id)
-
       }
-    } else {
-      const { reject } = _responses.get(id)!;
-      reject({ id, status, bags });
-      _responses.delete(id)
     }
+  
+    validatorWorker!.onerror = function (e: ErrorEvent) {
+      throw new Error("Worker error");
+    }
+    return r(validatorWorker);
+  })
+
+
+  const terminate = async () => {
+    if (!validatorWorker) await validatorWorkerCreate;
+    validatorWorker!.terminate();
+
   }
 
-  validatorWorker.onerror = function (e: ErrorEvent) {
-    throw new Error("Worker error");
-  }
-
-  const terminate = () => {
-    validatorWorker.terminate();
-
-  }
-
-  const validate = (xmlText: string, mainSchemaUrl: string | null, stopOnFailure: boolean = true): Promise<WorkerResponse> => {
+  const validate = async (xmlText: string, mainSchemaUrl: string | null, stopOnFailure: boolean = true): Promise<WorkerResponse> => {
+    if (!validatorWorker) await validatorWorkerCreate;
     const id = crypto.randomUUID();
 
     return new Promise((resolve, reject) => {
-      _responses.set(id, {resolve, reject});
+      _responses.set(id, { resolve, reject });
 
       const payload: WorkerPayload<ValidationPayload> = {
         id,
         payload: { xmlText, mainSchemaUrl, stopOnFailure }
       }
-      validatorWorker.postMessage(payload)
+      validatorWorker!.postMessage(payload)
     })
   }
 

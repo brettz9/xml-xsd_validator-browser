@@ -14,4 +14,4 @@ export { validateXmlTowardXsd } from "./validateTowardXsd"
 // Jika ingin custom dengan libXml2
 export { ensureLibxml2Loaded, useLibXml2 } from "./libxml/libxmlloader";
 
-export * from "./types";
+export * from "./types/types";

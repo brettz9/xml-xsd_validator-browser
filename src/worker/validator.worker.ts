@@ -1,5 +1,5 @@
 import { ensureLibxml2Loaded, libxml } from "../libxml/libxmlloader";
-import { ValidationPayload, ValidationResponse, WorkerBags, WorkerPayload, WorkerResponse } from "../types";
+import { ValidationPayload, ValidationResponse, WorkerBags, WorkerPayload, WorkerResponse } from "../types/types";
 import { validateWellForm } from "../validateFormWell";
 import { validateXmlTowardXsd } from "../validateTowardXsd";
 

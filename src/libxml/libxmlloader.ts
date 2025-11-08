@@ -1,4 +1,4 @@
-import { ValidationInfo } from "../types";
+import { ValidationInfo } from "../types/types";
 
 import { init_lib } from "./libxml2-wasm-wrapper";
 
@@ -8,7 +8,7 @@ type LibLoader = {
   // loadingPromise?: Promise<void>;
 };
 
-export const loader:LibLoader = {
+export const loader: LibLoader = {
   libxml: null as any,
   // loadingPromise: null as Promise<void> | null,
   initError: null as any,
@@ -23,8 +23,13 @@ export async function ensureLibxml2Loaded() {
     if (loader.libxml || loader.initError) return resolve([]);
     try {
       // globalThis.process = undefined;
-      const mod = await import("../../libxml2-wasm/lib/index.mjs");
-      loader.libxml = mod; 
+      // const mod = await import("../../libxml2-wasm/lib/index.mjs");
+      // const mod = await import("https://ferdisap.github.io/xml-xsd_validator-browser/libxml2-wasm/lib/index.mjs");
+      // const mod = await import("../../node_modules/libxml2-wasm/lib/index.mjs");
+      const mod = (await import(
+        "https://ferdisap.github.io/xml-xsd_validator-browser/libxml2-wasm/lib/index.mjs"
+      )) as any;
+      loader.libxml = mod;
       // loader.libxml = await mod(); 
       // console.log(loader.libxml)
       return resolve([]);
