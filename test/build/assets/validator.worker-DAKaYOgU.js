@@ -6238,6 +6238,30 @@ async function createMapInputProvider(map) {
     cleanup
   };
 }
+function mergeByBasenameKeepFullPath(existingArr, newItems) {
+  const combined = [...existingArr, ...newItems];
+  const map = /* @__PURE__ */ Object.create(null);
+  const basename = (filename) => filename.split("/").pop() || filename;
+  const isEmpty = (v) => v === void 0 || v === null || typeof v === "string" && v.trim() === "";
+  for (const item of combined) {
+    const key = basename(item.filename);
+    if (!map[key]) {
+      map[key] = { ...item };
+      continue;
+    }
+    const current = map[key];
+    if (item.filename.length > current.filename.length) {
+      current.filename = item.filename;
+    }
+    for (const [k, v] of Object.entries(item)) {
+      if (k === "filename") continue;
+      if (isEmpty(current[k]) && !isEmpty(v)) {
+        current[k] = v;
+      }
+    }
+  }
+  return Object.values(map);
+}
 async function findRequiredSchemas(mainSchemaUrl, visited = /* @__PURE__ */ new Set()) {
   if (visited.has(mainSchemaUrl)) {
     return Promise.resolve([]);
@@ -6274,16 +6298,24 @@ function extractSchemaLocation(xmlText) {
   const noNsMatch = xmlText.match(
     /\b[a-zA-Z0-9]+:noNamespaceSchemaLocation\s*=\s*["']([^"']+)["']/i
   );
-  if (noNsMatch) return noNsMatch[1];
+  if (noNsMatch) return [{ filename: noNsMatch[1], contents: "" }];
   const schemaLocMatch = xmlText.match(
-    /\bxsi:schemaLocation\s*=\s*["']([^"']+)["']/i
+    /\b[a-zA-Z0-9]+:schemaLocation\s*=\s*["']([^"']+)["']/i
   );
   if (schemaLocMatch) {
     const parts = schemaLocMatch[1].trim().split(/\s+/);
     const urls = parts.filter((p) => /^https?:\/\/|\.xsd$/i.test(p));
-    return urls[0] || null;
+    const schemaLocations = [];
+    for (let i = 0; i < urls.length; i += 2) {
+      schemaLocations.push({
+        namespace: urls[i],
+        filename: urls[i + 1],
+        contents: ""
+      });
+    }
+    return schemaLocations;
   }
-  return null;
+  return [];
 }
 function isXmlLike(file) {
   if (typeof file !== "string") {
@@ -6323,8 +6355,13 @@ async function validateXmlTowardXsd(file, mainSchemaUrl = null, stopOnFailure = 
       return Promise.reject(bags);
     }
   }
-  mainSchemaUrl = mainSchemaUrl ?? extractSchemaLocation(xmlText);
+  let schemas = [];
   if (!mainSchemaUrl) {
+    schemas = extractSchemaLocation(xmlText);
+  } else {
+    schemas.push({ filename: mainSchemaUrl, contents: "" });
+  }
+  if (!schemas[0]) {
     console.warn("Warning: Failed to fetch xml content");
     bags.push({
       name: "FetchError",
@@ -6340,9 +6377,8 @@ async function validateXmlTowardXsd(file, mainSchemaUrl = null, stopOnFailure = 
       return Promise.reject(bags);
     }
   }
-  let schemas = null;
   try {
-    schemas = await findRequiredSchemas(mainSchemaUrl);
+    schemas = mergeByBasenameKeepFullPath(schemas, await findRequiredSchemas(schemas[0].filename));
   } catch (error2) {
     console.warn("Warning: Failed to find required schemas");
     bags.push({

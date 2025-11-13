@@ -144,6 +144,9 @@ export type Schema = {
 
   /** Isi schema XSD dalam bentuk teks */
   contents: string;
+
+  /** Namespace opsional */
+  namespace?: string;
 };
 
 /**

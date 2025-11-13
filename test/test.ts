@@ -34,6 +34,16 @@ function test1() {
     xmlns:xlink="http://www.w3.org/1999/xlink" xsi:noNamespaceSchemaLocation="https://ferdisap.github.io/schema/s1000d/S1000D_5-0/xml_schema_flat/appliccrossreftable.xsd">
     <identAndStatusSection></identAndStatusSection>
   </dmodule>`;
+  // const xmlText =
+  // `<?xml version="1.0" encoding="UTF-8"?>
+  // <!DOCTYPE dmodule >
+  // <dmodule xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  //   xmlns:dc="http://www.purl.org/dc/elements/1.1/"
+  //   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+  //   xmlns:xlink="http://www.w3.org/1999/xlink" 
+  //   xsi:noNamespaceSchemaLocation="http://localhost:5174/s1000d/S1000D_5-0/xml_schema_flat/appliccrossreftable.xsd">
+  //   <identAndStatusSection></identAndStatusSection>
+  // </dmodule>`;
   validateXml(xmlText)
     .catch(bags => {
       // console.log(bags) // returning array contains object has name:"XMLValidateError"

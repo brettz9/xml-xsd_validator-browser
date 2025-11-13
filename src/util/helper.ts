@@ -1,4 +1,51 @@
 /**
+ * Gabungkan array `Schema` berdasarkan nama file (basename).
+ * - File dengan basename sama digabung.
+ * - Filename yang lebih lengkap (lebih panjang / punya path) dipertahankan.
+ * - Properti kosong diisi dari item lain.
+ */
+export function mergeByBasenameKeepFullPath(
+  existingArr: Schema[],
+  newItems: Schema[]
+): Schema[] {
+  const combined = [...existingArr, ...newItems];
+  const map: Record<string, Schema> = Object.create(null);
+
+  const basename = (filename: string): string => filename.split("/").pop() || filename;
+
+  const isEmpty = (v: unknown): boolean =>
+    v === undefined || v === null || (typeof v === "string" && v.trim() === "");
+
+  for (const item of combined) {
+    const key = basename(item.filename);
+
+    if (!map[key]) {
+      // Clone untuk menghindari mutasi input
+      map[key] = { ...item };
+      continue;
+    }
+
+    const current = map[key];
+
+    // 🔹 Pilih filename yang lebih panjang (punya path)
+    if (item.filename.length > current.filename.length) {
+      current.filename = item.filename;
+    }
+
+    // 🔹 Gabungkan properti (isi hanya jika kosong)
+    for (const [k, v] of Object.entries(item) as [keyof Schema, Schema[keyof Schema]][]) {
+      if (k === "filename") continue;
+
+      if (isEmpty(current[k]) && !isEmpty(v)) {
+        current[k] = v!;
+      }
+    }
+  }
+
+  return Object.values(map);
+}
+
+/**
  * Rekursif mendeteksi semua dependency XSD dari schema utama,
  * handle xs:import, xs:include, dan xs:redefine
  * 
@@ -17,7 +64,6 @@ export async function findRequiredSchemas(
     return Promise.resolve([]);
   }
   visited.add(mainSchemaUrl);
-
   return fetch(mainSchemaUrl)
     .then((res) => {
       if (!res.ok) throw new Error(`Gagal fetch schema: ${mainSchemaUrl}`);
@@ -57,16 +103,16 @@ export async function findRequiredSchemas(
  * Ambil URL schema dari atribut `xsi:noNamespaceSchemaLocation`
  * atau `xsi:schemaLocation`.
  */
-export function extractSchemaLocation(xmlText: string): string | null {
+export function extractSchemaLocation(xmlText: string): Schema[] {
   // Cari noNamespaceSchemaLocation
   const noNsMatch = xmlText.match(
     /\b[a-zA-Z0-9]+:noNamespaceSchemaLocation\s*=\s*["']([^"']+)["']/i
   );
-  if (noNsMatch) return noNsMatch[1];
+  if (noNsMatch) return [{ filename: noNsMatch[1], contents: "" }];
 
   // Cari schemaLocation (bisa punya banyak pasangan namespace + URL)
   const schemaLocMatch = xmlText.match(
-    /\bxsi:schemaLocation\s*=\s*["']([^"']+)["']/i
+    /\b[a-zA-Z0-9]+:schemaLocation\s*=\s*["']([^"']+)["']/i
   );
 
   if (schemaLocMatch) {
@@ -74,11 +120,22 @@ export function extractSchemaLocation(xmlText: string): string | null {
     // "ns1 url1 ns2 url2 ..." → ambil semua URL yang kelihatan valid
     const parts = schemaLocMatch[1].trim().split(/\s+/);
     const urls = parts.filter(p => /^https?:\/\/|\.xsd$/i.test(p));
-    return urls[0] || null;
+
+    const schemaLocations: Schema[] = [];
+    for (let i = 0; i < urls.length; i += 2) {
+      schemaLocations.push({
+        namespace: urls[i],
+        filename: urls[i + 1],
+        contents: "",
+      } as Schema);
+    }
+
+    return schemaLocations;
+    // return urls[0] || null;
   }
 
   // Tidak ditemukan
-  return null;
+  return [];
 }
 
 /**

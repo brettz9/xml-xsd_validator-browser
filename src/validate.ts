@@ -8,7 +8,6 @@ function WorkerWrapper() {
   });
 }
 /**
- * TBD, akan memvalidate xml berdasarkan namespace
  * xsi:schemaLocation may contain two xsd, eg. xsi:schemaLocation="namespace1 xsd1 namespace2 xsd2"
  */
 export async function validateXml(xmlText: string, mainSchemaUrl: string | null = null, stopOnFailure: boolean = true): Promise<ValidationInfo[]> {
@@ -21,23 +20,6 @@ export async function validateXml(xmlText: string, mainSchemaUrl: string | null 
     return Promise.reject(errors);
   })
 }
-// export async function validateXml(xmlText: string, mainSchemaUrl: string | null = null, stopOnFailure: boolean = true): Promise<ValidationInfo[]> {
-//   const errors: ValidationInfo[] = [];
-//   return validateWellForm(xmlText)
-//     .then((validateWellFormInfos): ValidationInfo[] | Promise<ValidationInfo[]> => {
-//       errors.push(...validateWellFormInfos);
-//       if (!stopOnFailure || (errors.length < 1)) {
-//         return validateXmlTowardXsd(xmlText, mainSchemaUrl, stopOnFailure)
-//           .then((validateXmlTowardXsdInfos) => {
-//             if (validateXmlTowardXsdInfos) {
-//               errors.push(...validateXmlTowardXsdInfos)
-//             }
-//             return errors;
-//           })
-//       }
-//       return errors;
-//     })
-// }
 
 // function reactiveStatus(init: string) {
 //   let value = init;

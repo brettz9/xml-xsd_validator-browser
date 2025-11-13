@@ -1,4 +1,4 @@
-[**xml-xsd-validator-browser v1.0.7**](../README.md)
+[**xml-xsd-validator-browser v1.0.8**](../README.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **viteWorkerPlugin**(`options`): `object`
 
-Defined in: [plugins/viteWorkerPlugin.ts:20](https://github.com/ferdisap/xml-xsd_validator-browser/blob/262a5d69532399b9b2c332f3b4b8954db3f6ed4b/src/plugins/viteWorkerPlugin.ts#L20)
+Defined in: [plugins/viteWorkerPlugin.ts:20](https://github.com/ferdisap/xml-xsd_validator-browser/blob/07eaefd3e0674318da2bdecf930261d4f09af76b/src/plugins/viteWorkerPlugin.ts#L20)
 
 Plugin untuk menangani `?worker` import di Vite.
 File worker akan dibundle secara terpisah tanpa hash.

@@ -1,7 +1,7 @@
 import { ErrorDetail, XsdValidator } from "libxml2-wasm";
 import { createMapInputProvider } from "./provider/MapInputProvider";
 import { MapInputProvider, Schema, WorkerBags } from "./types/types";
-import { extractSchemaLocation, findRequiredSchemas, getXmlText } from "./util/helper";
+import { extractSchemaLocation, findRequiredSchemas, getXmlText, mergeByBasenameKeepFullPath } from "./util/helper";
 import { useLibXml2 } from "./libxml/libxmlloader";
 
 /**
@@ -37,8 +37,13 @@ export async function validateXmlTowardXsd(file: string, mainSchemaUrl: string |
       return Promise.reject(bags);
     }
   }
-  mainSchemaUrl = mainSchemaUrl ?? extractSchemaLocation(xmlText!);
-  if (!mainSchemaUrl) {
+  let schemas:Schema[] = [];
+  if(!mainSchemaUrl){
+    schemas = extractSchemaLocation(xmlText!);
+  } else {
+    schemas.push({ filename: mainSchemaUrl, contents: ""});
+  }
+  if (!schemas[0]) {
     console.warn("Warning: Failed to fetch xml content");
     bags.push({
       name: "FetchError",
@@ -56,9 +61,8 @@ export async function validateXmlTowardXsd(file: string, mainSchemaUrl: string |
   }
 
   // 2). Load required schema
-  let schemas: Schema[] | null = null
   try {
-    schemas = await findRequiredSchemas(mainSchemaUrl!)
+    schemas = mergeByBasenameKeepFullPath(schemas, await findRequiredSchemas(schemas[0].filename));
   } catch (error) {
     console.warn("Warning: Failed to find required schemas");
     bags.push({
