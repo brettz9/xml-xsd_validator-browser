@@ -103,6 +103,18 @@ async function test2() {
 }
 test2()
 
+async function test3() {
+  const uri = "/test/DMC-BRAKE-AAA-DA1-00-00-00AA-041A-A_003-00_EN-US.XML";
+  const xmlText = await fetch(uri).then(r => r.text())
+  validateXml(xmlText)
+    .catch(bags => {
+      // console.log(bags) // returning array contains object has name:"XMLValidateError"
+      appendToHTML("for_test_3", bags);
+    })
+
+}
+test3()
+
 // expected
 /**
 [

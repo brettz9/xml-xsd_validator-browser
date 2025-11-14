@@ -152,6 +152,14 @@ export type Schema = {
   namespace?: string;
 };
 
+export type DtdLocation = {
+  type: "external" | "internal" | "public" | "public+external" | "none";
+  publicId: string | null;
+  systemId: string | null;
+  internalSubset: string | null;
+  rootName: string | null;
+};
+
 /**
  * 🔹 Input provider untuk proses validasi XML.
  * Menyediakan akses virtual terhadap file yang dibaca oleh `libxml2-wasm`.

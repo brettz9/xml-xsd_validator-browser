@@ -1,8 +1,10 @@
 import { ErrorDetail, XsdValidator } from "libxml2-wasm";
 import { createMapInputProvider } from "./provider/MapInputProvider";
 import { MapInputProvider, Schema, WorkerBags } from "./types/types";
-import { extractSchemaLocation, findRequiredSchemas, getXmlText, mergeByBasenameKeepFullPath } from "./util/helper";
+import { detectSchemaLocation, findRequiredSchemas, getSchemaText, mergeByBasenameKeepFullPath } from "./util/helper";
 import { useLibXml2 } from "./libxml/libxmlloader";
+import { getXmlDocumentParseOption } from "./validate";
+// import * as LibXml2 from 'libxml2-wasm';
 
 /**
  * logic validate xml toward xsd.
@@ -18,9 +20,9 @@ export async function validateXmlTowardXsd(file: string, mainSchemaUrl: string |
   // 0) ensure libxml
   await ensureLibxmlLoaded();
   // 1). Load xmlText
-  let xmlText: string;
+  let xmlText: string = '';
   try {
-    xmlText = await getXmlText(file)
+    xmlText = await getSchemaText(file)
   } catch {
     console.warn("Warning: Failed to fetch xml content");
     bags.push({
@@ -37,11 +39,18 @@ export async function validateXmlTowardXsd(file: string, mainSchemaUrl: string |
       return Promise.reject(bags);
     }
   }
+  // if no xmlText then just return the bags
+  if(!Boolean(xmlText)) return Promise.reject(bags);
+  // load schema
   let schemas:Schema[] = [];
   if(!mainSchemaUrl){
-    schemas = extractSchemaLocation(xmlText!);
+    schemas = detectSchemaLocation(xmlText!);
   } else {
     schemas.push({ filename: mainSchemaUrl, contents: ""});
+  }
+  // if no schemas, then no need to validate any more
+  if(schemas.length < 1) {
+    return Promise.reject(bags)
   }
   if (!schemas[0]) {
     console.warn("Warning: Failed to fetch xml content");
@@ -106,8 +115,9 @@ export async function validateXmlTowardXsd(file: string, mainSchemaUrl: string |
   const mainXsdText = schemas![0].contents;
   let xmlDoc: any;
   try {
-    xmlDoc = libxml().XmlDocument.fromString(xmlText!);
+    xmlDoc = libxml().XmlDocument.fromString(xmlText!, { option: getXmlDocumentParseOption() });
   } catch (error) {
+    console.log(error)
     console.warn("Warning: XML and XSD Document fail to parsed");
     bags.push({
       name: "XMLParseError",

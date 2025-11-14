@@ -1,9 +1,30 @@
 import { validateWellForm } from "./validateFormWell";
 import { UseWorker, ValidationInfo, ValidationPayload, WorkerPayload, WorkerResponse } from "./types/types";
 import { validateXmlTowardXsd } from "./validateTowardXsd";
+import { ParseOption } from "libxml2-wasm";
 
 declare global {
   var uri: string;
+  var XmlDocumentParseOption: number;
+}
+
+self.uri = '';
+self.XmlDocumentParseOption = ParseOption.XML_PARSE_DEFAULT;
+
+export function setXmlDocumentParseOption(option: ParseOption) {
+  self.XmlDocumentParseOption = option
+}
+
+export function getXmlDocumentParseOption() {
+  return self.XmlDocumentParseOption
+}
+
+export function s1000dDocParseOption() {
+  // 14 adalah penjumlahan ini
+  // ParseOption.XML_PARSE_DTDLOAD | // Load external DTD
+  // ParseOption.XML_PARSE_DTDATTR | // Default attributes from DTD
+  // ParseOption.XML_PARSE_NOENT; // Expand internal + external ENTITY
+  return 14
 }
 
 function WorkerWrapper() {
@@ -11,10 +32,10 @@ function WorkerWrapper() {
     type: "module",
   });
 }
-
-self.uri = '';
 /**
  * set and get base uri
+ * @params uri -> set base uri if any. 
+ * @return always return to window href if exist or nullish string
  */
 export function baseUri(uri: string | null = null): string {
   if (uri) {

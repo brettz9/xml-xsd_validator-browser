@@ -1,3 +1,6 @@
+import { DtdLocation, Schema } from "../types/types";
+import { baseUri } from "../validate";
+
 /**
  * Gabungkan array `Schema` berdasarkan nama file (basename).
  * - File dengan basename sama digabung.
@@ -53,17 +56,13 @@ export function mergeByBasenameKeepFullPath(
  * Menangani error dengan console.error, tetap resolve agar tidak menghentikan chain.
  * array index 0 adalah mainSchemaUrl
  */
-
-import { Schema } from "../types/types";
-import { baseUri } from "../validate";
-
 export async function findRequiredSchemas(
   mainSchemaUrl: string,
   visited = new Set<string>()
 ): Promise<Schema[]> {
   try {
-    mainSchemaUrl = new URL(mainSchemaUrl, baseUri(null)).href;
-  } catch(err) {
+    mainSchemaUrl = resolveUriToBase(mainSchemaUrl);
+  } catch (err) {
     console.error("schema-url-not-well-formed:", err);
     return Promise.reject([]);
   }
@@ -79,12 +78,11 @@ export async function findRequiredSchemas(
     .then(async (text) => {
       const regex = /<[a-zA-Z]{2}:(?:import|include|redefine)[^>]*schemaLocation="([^"]+)"/g;
       const matches = Array.from(text.matchAll(regex));
-      const base = new URL(mainSchemaUrl, baseUri(null));
-      
+
       const nestedUrls: string[] = [];
       for (const match of matches) {
         try {
-          const resolved = new URL(match[1], base).href;
+          const resolved = resolveUri(match[1], mainSchemaUrl)
           if (!visited.has(resolved)) nestedUrls.push(resolved);
         } catch (e) {
           console.warn("URL tidak valid:", match[1]);
@@ -110,7 +108,7 @@ export async function findRequiredSchemas(
  * Ambil URL schema dari atribut `xsi:noNamespaceSchemaLocation`
  * atau `xsi:schemaLocation`.
  */
-export function extractSchemaLocation(xmlText: string): Schema[] {
+export function detectSchemaLocation(xmlText: string): Schema[] {
   // Cari noNamespaceSchemaLocation
   const noNsMatch = xmlText.match(
     /\b[a-zA-Z0-9]+:noNamespaceSchemaLocation\s*=\s*["']([^"']+)["']/i
@@ -160,16 +158,220 @@ export function isXmlLike(file: string): boolean {
 }
 
 /**
+ * resolve relative uri to base uri jika
+ * @param uri 
+ * @returns 
+ */
+export function resolveUriToBase(uri: string) {
+  return (new URL(uri, baseUri(null))).href;
+}
+
+/**
+ * resolve relative uri to base uri
+ * Menggabungkan base URL (file induk) dengan path relatif.
+ * Jika childUrl sudah absolute, langsung dikembalikan.
+ */
+export function resolveUri(uri: string, baseUri: string): string {
+  try {
+    // Jika uri sudah absolute URL
+    new URL(uri);
+    return uri;
+  } catch {
+    // not absolute → continue
+  }
+
+  try {
+    const base = new URL(baseUri);
+    return new URL(uri, base).toString();
+  } catch {
+    // fallback manual (jika base bukan URL)
+  }
+
+  // fallback: file path berdasarkan folder parent
+  if (baseUri.includes("/")) {
+    const baseDir = baseUri.substring(0, baseUri.lastIndexOf("/") + 1);
+    return baseDir + uri;
+  }
+
+  return uri;
+}
+
+/**
  * to get xml text from url.
  * @param file url or xml contents
  * @returns xml text
  */
-export async function getXmlText(file: string): Promise<string> {
+export async function getSchemaText(file: string): Promise<string> {
   if (isXmlLike(file)) {
     return Promise.resolve(file);
   } else {
-    const fileurl = (new URL(file, window.location.href)).href;
+    const fileurl = (new URL(file, baseUri(null))).href;
     return fetch(fileurl).then(r => r.text())
   }
 }
 
+/**
+ * Mendeteksi DTD (SYSTEM, PUBLIC, internal subset) dari XML.
+ * Mendukung multiline dan kombinasi PUBLIC+SYSTEM.
+ */
+export function detectDtdLocation(xmlText: string): DtdLocation {
+  const doctypeRegex =
+    /<!DOCTYPE\s+([a-zA-Z0-9:_-]+)\s*((?:PUBLIC\s+"[^"]+"\s+"[^"]+")|(?:PUBLIC\s+"[^"]+")|(?:SYSTEM\s+"[^"]+")|)\s*(?:\[(.*?)\])?\s*>/is;
+
+  const match = doctypeRegex.exec(xmlText);
+
+  if (!match) {
+    return {
+      type: "none",
+      publicId: null,
+      systemId: null,
+      internalSubset: null,
+      rootName: null,
+    };
+  }
+
+  const rootName = match[1] || null;
+  const externalDecl = match[2] || "";
+  const internalSubset = match[3] ? match[3].trim() : null;
+
+  let publicId: string | null = null;
+  let systemId: string | null = null;
+
+  // DETEKSI PUBLIC + SYSTEM
+  const publicFull = /PUBLIC\s+"([^"]+)"\s+"([^"]+)"/i.exec(externalDecl);
+  if (publicFull) {
+    publicId = publicFull[1];
+    systemId = publicFull[2];
+    return {
+      type: "public+external",
+      publicId,
+      systemId,
+      internalSubset,
+      rootName,
+    };
+  }
+
+  // DETEKSI PUBLIC (hanya publicId saja)
+  const publicOnly = /PUBLIC\s+"([^"]+)"/i.exec(externalDecl);
+  if (publicOnly) {
+    publicId = publicOnly[1];
+    systemId = null;
+    return {
+      type: "public",
+      publicId,
+      systemId,
+      internalSubset,
+      rootName,
+    };
+  }
+
+  // DETEKSI SYSTEM
+  const systemOnly = /SYSTEM\s+"([^"]+)"/i.exec(externalDecl);
+  if (systemOnly) {
+    systemId = systemOnly[1];
+    return {
+      type: "external",
+      publicId: null,
+      systemId,
+      internalSubset,
+      rootName,
+    };
+  }
+
+  // Jika tidak ada PUBLIC/SYSTEM tetapi ada internal subset
+  if (internalSubset) {
+    return {
+      type: "internal",
+      publicId: null,
+      systemId: null,
+      internalSubset,
+      rootName,
+    };
+  }
+
+  // fallback
+  return {
+    type: "none",
+    publicId: null,
+    systemId: null,
+    internalSubset: null,
+    rootName,
+  };
+}
+
+/**
+ * Mencari semua DTD yang dibutuhkan oleh DTD utama,
+ * termasuk nested ENTITY SYSTEM, ENTITY % param, NOTATION SYSTEM/PUBLIC.
+ *
+ * Mirip findRequiredSchemas untuk XSD.
+ */
+export async function findRequiredDtds(
+  mainDtdUrl: string,
+  visited = new Set<string>()
+): Promise<Schema[]> {
+  try {
+    mainDtdUrl = resolveUriToBase(mainDtdUrl);
+  } catch (err) {
+    console.error("dtd-url-not-well-formed:", err);
+    return Promise.reject([]);
+  }
+
+  if (visited.has(mainDtdUrl)) {
+    return Promise.resolve([]);
+  }
+  visited.add(mainDtdUrl);
+
+  return fetch(mainDtdUrl)
+    .then((res) => {
+      if (!res.ok) throw new Error(`Gagal fetch DTD: ${mainDtdUrl}`);
+      return res.text();
+    })
+    .then(async (text) => {
+      const nestedUrls: string[] = [];
+
+      // DETEKSI ENTITY SYSTEM "xxx.dtd" dan parameter entity %name SYSTEM...
+      const entityRegex =
+        /<!ENTITY\s+(?:%?\s*\w+)\s+SYSTEM\s+"([^"]+)"/gi;
+
+      for (const m of text.matchAll(entityRegex)) {
+        try {
+          const resolved = resolveUri(m[1], mainDtdUrl);
+          if (!visited.has(resolved)) nestedUrls.push(resolved);
+        } catch (e) {
+          console.warn("DTD entity URL tidak valid:", m[1]);
+        }
+      }
+
+      // DETEKSI NOTATION SYSTEM/PUBLIC
+      const notationRegex =
+        /<!NOTATION\s+\w+\s+(?:SYSTEM\s+"([^"]+)"|PUBLIC\s+"[^"]+"\s+"([^"]+)")/gi;
+
+      for (const m of text.matchAll(notationRegex)) {
+        const sys = m[1] || m[2];
+        if (sys) {
+          try {
+            const resolved = resolveUri(sys, mainDtdUrl);
+            if (!visited.has(resolved)) nestedUrls.push(resolved);
+          } catch (e) {
+            console.warn("DTD notation URL tidak valid:", sys);
+          }
+        }
+      }
+
+      // RECURSIVE load nested DTDs
+      return Promise.all(
+        nestedUrls.map((url) => findRequiredDtds(url, visited))
+      )
+        .then((nested) => {
+          const extra = nested.flat();
+          return Promise.resolve([
+            { filename: mainDtdUrl, contents: text },
+            ...extra,
+          ]);
+        });
+    })
+    .catch((err) => {
+      console.error("findRequiredDtds error:", err);
+      return Promise.reject([]);
+    });
+}

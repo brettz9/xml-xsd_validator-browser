@@ -6264,7 +6264,7 @@ function mergeByBasenameKeepFullPath(existingArr, newItems) {
 }
 async function findRequiredSchemas(mainSchemaUrl, visited = /* @__PURE__ */ new Set()) {
   try {
-    mainSchemaUrl = new URL(mainSchemaUrl, baseUri(null)).href;
+    mainSchemaUrl = resolveUriToBase(mainSchemaUrl);
   } catch (err) {
     console.error("schema-url-not-well-formed:", err);
     return Promise.reject([]);
@@ -6279,11 +6279,10 @@ async function findRequiredSchemas(mainSchemaUrl, visited = /* @__PURE__ */ new 
   }).then(async (text) => {
     const regex = /<[a-zA-Z]{2}:(?:import|include|redefine)[^>]*schemaLocation="([^"]+)"/g;
     const matches = Array.from(text.matchAll(regex));
-    const base = new URL(mainSchemaUrl, baseUri(null));
     const nestedUrls = [];
     for (const match of matches) {
       try {
-        const resolved = new URL(match[1], base).href;
+        const resolved = resolveUri(match[1], mainSchemaUrl);
         if (!visited.has(resolved)) nestedUrls.push(resolved);
       } catch (e) {
         console.warn("URL tidak valid:", match[1]);
@@ -6300,7 +6299,7 @@ async function findRequiredSchemas(mainSchemaUrl, visited = /* @__PURE__ */ new 
     return Promise.reject([]);
   });
 }
-function extractSchemaLocation(xmlText) {
+function detectSchemaLocation(xmlText) {
   const noNsMatch = xmlText.match(
     /\b[a-zA-Z0-9]+:noNamespaceSchemaLocation\s*=\s*["']([^"']+)["']/i
   );
@@ -6329,11 +6328,31 @@ function isXmlLike(file) {
   }
   return file.includes("<") && file.includes(">") && (file.includes("<?xml") || file.includes("</"));
 }
-async function getXmlText(file) {
+function resolveUriToBase(uri) {
+  return new URL(uri, baseUri(null)).href;
+}
+function resolveUri(uri, baseUri2) {
+  try {
+    new URL(uri);
+    return uri;
+  } catch {
+  }
+  try {
+    const base = new URL(baseUri2);
+    return new URL(uri, base).toString();
+  } catch {
+  }
+  if (baseUri2.includes("/")) {
+    const baseDir = baseUri2.substring(0, baseUri2.lastIndexOf("/") + 1);
+    return baseDir + uri;
+  }
+  return uri;
+}
+async function getSchemaText(file) {
   if (isXmlLike(file)) {
     return Promise.resolve(file);
   } else {
-    const fileurl = new URL(file, window.location.href).href;
+    const fileurl = new URL(file, baseUri(null)).href;
     return fetch(fileurl).then((r) => r.text());
   }
 }
@@ -6342,9 +6361,9 @@ async function validateXmlTowardXsd(file, mainSchemaUrl = null, stopOnFailure = 
   let provider = null;
   const bags = [];
   await ensureLibxmlLoaded();
-  let xmlText;
+  let xmlText = "";
   try {
-    xmlText = await getXmlText(file);
+    xmlText = await getSchemaText(file);
   } catch {
     console.warn("Warning: Failed to fetch xml content");
     bags.push({
@@ -6361,11 +6380,15 @@ async function validateXmlTowardXsd(file, mainSchemaUrl = null, stopOnFailure = 
       return Promise.reject(bags);
     }
   }
+  if (!Boolean(xmlText)) return Promise.reject(bags);
   let schemas = [];
   if (!mainSchemaUrl) {
-    schemas = extractSchemaLocation(xmlText);
+    schemas = detectSchemaLocation(xmlText);
   } else {
     schemas.push({ filename: mainSchemaUrl, contents: "" });
+  }
+  if (schemas.length < 1) {
+    return Promise.reject(bags);
   }
   if (!schemas[0]) {
     console.warn("Warning: Failed to fetch xml content");
@@ -6423,8 +6446,9 @@ async function validateXmlTowardXsd(file, mainSchemaUrl = null, stopOnFailure = 
   const mainXsdText = schemas[0].contents;
   let xmlDoc;
   try {
-    xmlDoc = libxml3().XmlDocument.fromString(xmlText);
+    xmlDoc = libxml3().XmlDocument.fromString(xmlText, { option: getXmlDocumentParseOption() });
   } catch (error2) {
+    console.log(error2);
     console.warn("Warning: XML and XSD Document fail to parsed");
     bags.push({
       name: "XMLParseError",
@@ -6505,6 +6529,10 @@ async function validateXmlTowardXsd(file, mainSchemaUrl = null, stopOnFailure = 
   return Promise.reject(bags);
 }
 self.uri = "";
+self.XmlDocumentParseOption = ParseOption.XML_PARSE_DEFAULT;
+function getXmlDocumentParseOption() {
+  return self.XmlDocumentParseOption;
+}
 function baseUri(uri = null) {
   if (uri) {
     self.uri = uri;

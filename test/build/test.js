@@ -6323,7 +6323,7 @@ function mergeByBasenameKeepFullPath(existingArr, newItems) {
 }
 async function findRequiredSchemas(mainSchemaUrl, visited = /* @__PURE__ */ new Set()) {
   try {
-    mainSchemaUrl = new URL(mainSchemaUrl, baseUri(null)).href;
+    mainSchemaUrl = resolveUriToBase(mainSchemaUrl);
   } catch (err) {
     console.error("schema-url-not-well-formed:", err);
     return Promise.reject([]);
@@ -6338,11 +6338,10 @@ async function findRequiredSchemas(mainSchemaUrl, visited = /* @__PURE__ */ new 
   }).then(async (text) => {
     const regex = /<[a-zA-Z]{2}:(?:import|include|redefine)[^>]*schemaLocation="([^"]+)"/g;
     const matches = Array.from(text.matchAll(regex));
-    const base = new URL(mainSchemaUrl, baseUri(null));
     const nestedUrls = [];
     for (const match of matches) {
       try {
-        const resolved = new URL(match[1], base).href;
+        const resolved = resolveUri(match[1], mainSchemaUrl);
         if (!visited.has(resolved)) nestedUrls.push(resolved);
       } catch (e) {
         console.warn("URL tidak valid:", match[1]);
@@ -6359,7 +6358,7 @@ async function findRequiredSchemas(mainSchemaUrl, visited = /* @__PURE__ */ new 
     return Promise.reject([]);
   });
 }
-function extractSchemaLocation(xmlText) {
+function detectSchemaLocation(xmlText) {
   const noNsMatch = xmlText.match(
     /\b[a-zA-Z0-9]+:noNamespaceSchemaLocation\s*=\s*["']([^"']+)["']/i
   );
@@ -6383,13 +6382,36 @@ function extractSchemaLocation(xmlText) {
   return [];
 }
 function isXmlLike(file) {
+  if (typeof file !== "string") {
+    return false;
+  }
   return file.includes("<") && file.includes(">") && (file.includes("<?xml") || file.includes("</"));
 }
-async function getXmlText(file) {
+function resolveUriToBase(uri) {
+  return new URL(uri, baseUri(null)).href;
+}
+function resolveUri(uri, baseUri2) {
+  try {
+    new URL(uri);
+    return uri;
+  } catch {
+  }
+  try {
+    const base = new URL(baseUri2);
+    return new URL(uri, base).toString();
+  } catch {
+  }
+  if (baseUri2.includes("/")) {
+    const baseDir = baseUri2.substring(0, baseUri2.lastIndexOf("/") + 1);
+    return baseDir + uri;
+  }
+  return uri;
+}
+async function getSchemaText(file) {
   if (isXmlLike(file)) {
     return Promise.resolve(file);
   } else {
-    const fileurl = new URL(file, window.location.href).href;
+    const fileurl = new URL(file, baseUri(null)).href;
     return fetch(fileurl).then((r) => r.text());
   }
 }
@@ -6398,9 +6420,9 @@ async function validateXmlTowardXsd(file, mainSchemaUrl = null, stopOnFailure = 
   let provider = null;
   const bags = [];
   await ensureLibxmlLoaded();
-  let xmlText;
+  let xmlText = "";
   try {
-    xmlText = await getXmlText(file);
+    xmlText = await getSchemaText(file);
   } catch {
     console.warn("Warning: Failed to fetch xml content");
     bags.push({
@@ -6417,11 +6439,15 @@ async function validateXmlTowardXsd(file, mainSchemaUrl = null, stopOnFailure = 
       return Promise.reject(bags);
     }
   }
+  if (!Boolean(xmlText)) return Promise.reject(bags);
   let schemas = [];
   if (!mainSchemaUrl) {
-    schemas = extractSchemaLocation(xmlText);
+    schemas = detectSchemaLocation(xmlText);
   } else {
     schemas.push({ filename: mainSchemaUrl, contents: "" });
+  }
+  if (schemas.length < 1) {
+    return Promise.reject(bags);
   }
   if (!schemas[0]) {
     console.warn("Warning: Failed to fetch xml content");
@@ -6479,8 +6505,9 @@ async function validateXmlTowardXsd(file, mainSchemaUrl = null, stopOnFailure = 
   const mainXsdText = schemas[0].contents;
   let xmlDoc;
   try {
-    xmlDoc = libxml3().XmlDocument.fromString(xmlText);
+    xmlDoc = libxml3().XmlDocument.fromString(xmlText, { option: getXmlDocumentParseOption() });
   } catch (error2) {
+    console.log(error2);
     console.warn("Warning: XML and XSD Document fail to parsed");
     bags.push({
       name: "XMLParseError",
@@ -6560,16 +6587,11 @@ async function validateXmlTowardXsd(file, mainSchemaUrl = null, stopOnFailure = 
   provider?.cleanup();
   return Promise.reject(bags);
 }
-function WorkerWrapper() {
-  return new Worker(new URL(
-    /* @vite-ignore */
-    "" + new URL("assets/validator.worker-pOsu8yD9.js", import.meta.url).href,
-    import.meta.url
-  ), {
-    type: "module"
-  });
-}
 self.uri = "";
+self.XmlDocumentParseOption = ParseOption.XML_PARSE_DEFAULT;
+function getXmlDocumentParseOption() {
+  return self.XmlDocumentParseOption;
+}
 function baseUri(uri = null) {
   if (uri) {
     self.uri = uri;
@@ -6586,77 +6608,6 @@ async function validateXml(xmlText, mainSchemaUrl = null, stopOnFailure = true) 
     errors.push(...e);
     return Promise.reject(errors);
   });
-}
-function useWorker() {
-  const _responses = /* @__PURE__ */ new Map();
-  let validatorWorker = WorkerWrapper();
-  let _resolveReady;
-  const readyPromise = new Promise((resolve) => _resolveReady = resolve);
-  validatorWorker.onmessage = (e) => {
-    if (e.data.ready) {
-      console.log("[xml-xsd-validator-browser] Worker is ready ✅");
-      _resolveReady(true);
-      return;
-    }
-    const { id, status, bags } = e.data;
-    if (status) {
-      if (_responses.has(id)) {
-        const { resolve } = _responses.get(id);
-        resolve({ id, status, bags });
-        _responses.delete(id);
-      }
-    } else {
-      const { reject } = _responses.get(id);
-      reject({ id, status, bags });
-      _responses.delete(id);
-    }
-  };
-  validatorWorker.onmessageerror = (e) => {
-    console.error("⚠️ Worker message error:", e);
-  };
-  validatorWorker.onerror = async function(e) {
-    throw new Error("Worker error");
-  };
-  const terminate = async () => {
-    validatorWorker.terminate();
-    console.log("[xml-xsd-validator-browser] Worker is terminated ✅");
-  };
-  const validate = async (xmlText, mainSchemaUrl, stopOnFailure = true) => {
-    const id = crypto.randomUUID();
-    return new Promise(async (resolve, reject) => {
-      _responses.set(id, { resolve, reject });
-      let timer = setTimeout(() => {
-        const response = {
-          id,
-          status: false,
-          bags: [{
-            name: "WorkerResponseTimeout",
-            type: "none",
-            detail: {
-              message: "",
-              file: "",
-              line: 1,
-              col: 1
-            }
-          }]
-        };
-        console.error("[xml-xsd-validator-browser] Worker response timeout ⚠️ ");
-        return reject(response);
-      }, 5e3);
-      if (await readyPromise) {
-        clearTimeout(timer);
-        const payload = {
-          id,
-          payload: { xmlText, mainSchemaUrl, stopOnFailure, base: window.location.href }
-        };
-        validatorWorker.postMessage(payload);
-      }
-    });
-  };
-  return {
-    validate,
-    terminate
-  };
 }
 function appendToHTML(idEl, errors) {
   const container = document.getElementById(idEl);
@@ -6675,37 +6626,14 @@ function appendToHTML(idEl, errors) {
     });
   }
 }
-function test1() {
-  const xmlText = `<?xml version="1.0" encoding="UTF-8"?>
-  <!DOCTYPE dmodule >
-  <dmodule xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xmlns:dc="http://www.purl.org/dc/elements/1.1/"
-    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-    xmlns:xlink="http://www.w3.org/1999/xlink" xsi:noNamespaceSchemaLocation="https://ferdisap.github.io/schema/s1000d/S1000D_5-0/xml_schema_flat/appliccrossreftable.xsd">
-    <identAndStatusSection></identAndStatusSection>
-  </dmodule>`;
+async function test3() {
+  const uri = "/test/DMC-BRAKE-AAA-DA1-00-00-00AA-041A-A_003-00_EN-US.XML";
+  const xmlText = await fetch(uri).then((r) => r.text());
   validateXml(xmlText).catch((bags) => {
-    appendToHTML("for_test_1", bags);
+    appendToHTML("for_test_3", bags);
   });
 }
-test1();
-async function test2() {
-  const xmlText = `<?xml version="1.0" encoding="UTF-8"?>  <!DOCTYPE dmodule >
-  <dmodule>
-    <identAndStatusSection></identAndStatusSection>
-  </dmodule>`;
-  const mainSchemaUrl = "http://www.s1000d.org/S1000D_5-0/xml_schema_flat/appliccrossreftable.xsd";
-  const { validate, terminate } = useWorker();
-  validate(xmlText, mainSchemaUrl).then((response) => {
-    const { id, status, bags } = response;
-    appendToHTML("for_test_2", bags);
-  }).catch((response) => {
-    const { id, status, bags } = response;
-    appendToHTML("for_test_2", bags);
-    terminate();
-  });
-}
-test2();
+test3();
 const __viteBrowserExternal = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null
 }, Symbol.toStringTag, { value: "Module" }));
