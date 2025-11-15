@@ -49,12 +49,14 @@ export type UseWorker = {
    * @param stopOnFailure Jika `true`, hentikan saat error pertama ditemukan.
    * @returns Promise yang mengembalikan hasil berupa `WorkerResponse`.
    */
-  validate(xmlText: string, mainSchemaUrl: string | null, stopOnFailure?: boolean): Promise<WorkerResponse>;
+  validate(xmlText: string, mainSchemaUrl?: string | null, stopOnFailure?: boolean): Promise<WorkerResponse>;
 
   /**
    * Terminasi worker agar berhenti bekerja dan melepaskan resource.
    */
   terminate(): void;
+
+  onBefore(data:ValidationPayload["onBefore"]): void
 };
 
 /**
@@ -69,7 +71,9 @@ export type ErrorName =
   | "ParseTimeout"
   | "LibInitError"
   | "RegisteringProviderError" 
-  | "WorkerResponseTimeout";
+  | "WorkerResponseTimeout"
+  | "NotationNotValid"
+  | "EntityNotValid";
 
 /**
  * 🔹 Jenis validasi XML yang sedang dilakukan.
@@ -119,11 +123,9 @@ export type ValidationResponse = {
 export type PayloadId = string;
 
 /**
- * 🔹 Payload untuk menjalankan validasi XML terhadap XSD.
+ * 🔹 Payload untuk menjalankan validasi XML terhadap XSD di worker.
  */
 export type ValidationPayload = {
-  /** base uri */
-  base?:string;
   
   /** Teks XML yang akan divalidasi */
   xmlText: string;
@@ -136,6 +138,13 @@ export type ValidationPayload = {
 
   /** URL XSD utama (opsional) */
   mainSchemaUrl?: string | null;
+
+  onBefore?: {
+    set_xml_docoument_parse_option?: number; // akan menjalankan fungsi XmlDocumentParseOption(option:number);
+    set_xml_entity_notation_option?: IValidateEntityNotationOption // akan menjalankan fungsi XmlEntityNotationOption(opt: IValidateEntityNotationOption)
+    /** base uri */
+    base?:string;
+  }
 };
 
 /**
@@ -204,3 +213,45 @@ export type MapInputProvider = {
    */
   cleanup(): void;
 };
+
+
+// validate dtd
+export interface DtdInfo {
+  type: "none" | "internal" | "external" | "public" | "public+external";
+  publicId: string | null;
+  systemId: string | null;
+  rootName: string | null;
+  internalSubset: string | null; // null kalau nggak ada internal
+  hasInternal: boolean; // true/false
+  hasExternal: boolean; // true/false
+}
+
+export interface ParsedEntity {
+  name: string;
+  publicId: string | null;
+  systemId: string | null;
+  notationName: string | null; // null jika parsed entity
+}
+
+export interface ParsedNotation {
+  name: string;
+  publicId: string | null;
+  systemId: string | null;
+}
+
+export interface EntityNotation {
+  entities: ParsedEntity[];
+  notations: ParsedNotation[];
+}
+
+export interface IValidateEntityNotationOption {
+  entity?: {
+    validNotation: boolean
+  },
+  notations?: {
+    // allowedNotation?: () => Promise<ParsedNotation[]>; // url
+    allowedNotation?: ParsedNotation[] | null; // url
+    name: boolean;
+    publicId: boolean;
+  }
+}

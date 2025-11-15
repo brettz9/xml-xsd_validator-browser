@@ -1,11 +1,13 @@
-import { ValidationPayload, ValidationResponse, WorkerBags, WorkerPayload, WorkerResponse } from "../types/types";
-import { baseUri } from "../validate";
+import { IValidateEntityNotationOption, ValidationPayload, ValidationResponse, WorkerBags, WorkerPayload, WorkerResponse } from "../types/types";
+import { baseUri, XmlDocumentParseOption, XmlEntityNotationOption } from "../validate";
+import { validateEntityNotation } from "../validateDtd";
 import { validateWellForm } from "../validateFormWell";
 import { validateXmlTowardXsd } from "../validateTowardXsd";
 
 async function validating(xmlText: string, mainSchemaUrl: string | null = null, stopOnFailure: boolean = true) {
   return Promise.all([
     validateWellForm(xmlText),
+    validateEntityNotation(xmlText, stopOnFailure),
     validateXmlTowardXsd(xmlText, mainSchemaUrl, stopOnFailure)
   ])
     .then(() => Promise.resolve([]))
@@ -45,9 +47,23 @@ self.postMessage({
 });
 self.onmessage = (e: MessageEvent<WorkerPayload<ValidationPayload>>) => {
   const { id, payload } = e.data;
-  const { xmlText, mainSchemaUrl, stopOnFailure, duration, base } = payload;
 
-  if(base) baseUri(base);
+  // console.log('aaa fufuafa', payload.onBefore);
+  if(payload.onBefore){
+    if(payload.onBefore.set_xml_docoument_parse_option){
+      XmlDocumentParseOption(payload.onBefore.set_xml_docoument_parse_option as number);
+    }
+    if(payload.onBefore.set_xml_entity_notation_option){
+      XmlEntityNotationOption(payload.onBefore.set_xml_entity_notation_option as IValidateEntityNotationOption);
+      // console.log('bbb', self.Option_XmlEntityNotation.notations?.allowedNotation)
+    }
+    if(payload.onBefore.base){
+      baseUri(payload.onBefore.base);
+    }
+  }
+
+  const { xmlText, mainSchemaUrl, stopOnFailure, duration } = payload;
+
 
   const errorBags: WorkerBags = [];
   run(xmlText, mainSchemaUrl, stopOnFailure, duration)

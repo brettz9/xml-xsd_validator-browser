@@ -1,4 +1,5 @@
-import { DtdLocation, Schema } from "../types/types";
+import { ParseOption } from "libxml2-wasm";
+import { DtdLocation, IValidateEntityNotationOption, ParsedNotation, Schema } from "../types/types";
 import { baseUri } from "../validate";
 
 /**
@@ -375,3 +376,53 @@ export async function findRequiredDtds(
       return Promise.reject([]);
     });
 }
+
+export function constructEntityNotationValidationOption(
+  allowedNotation: ParsedNotation[],
+  entityValidNotation = true,
+  notationValidName = true,
+  notationValidPublicId = true,
+): IValidateEntityNotationOption {
+  return {
+    entity: {
+      validNotation: entityValidNotation
+    },
+    notations: {
+      allowedNotation,
+      name: notationValidName,
+      publicId: notationValidPublicId
+    }
+  }
+}
+
+// /**
+//  * Build bitmask for libxml2 ParseOptions
+//  *
+//  * @param opts Configuration flags
+//  */
+// export function buildXmlParseOptions(opts: {
+//   dtd?: boolean;
+//   expandEntities?: true;
+//   validateDtd?: false;
+//   noNetwork?: false;
+// } = {}) {
+//   let option = ParseOption.XML_PARSE_DEFAULT;
+
+//   if (opts.dtd) {
+//     option |= ParseOption.XML_PARSE_DTDLOAD;    // load internal / external DTD
+//   }
+
+//   if (opts.expandEntities) {
+//     option |= ParseOption.XML_PARSE_NOENT;      // expand &ENTITY;
+//   }
+
+//   if (opts.validateDtd) {
+//     option |= ParseOption.XML_PARSE_DTDVALID;   // optional: validate using DTD
+//   }
+
+//   if (opts.noNetwork) {
+//     option |= ParseOption.XML_PARSE_NONET;      // avoid fetching external URLs
+//   }
+
+//   return option;
+// }

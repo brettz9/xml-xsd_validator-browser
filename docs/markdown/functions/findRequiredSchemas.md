@@ -8,7 +8,14 @@
 
 > **findRequiredSchemas**(`mainSchemaUrl`, `visited`): `Promise`\<[`Schema`](../type-aliases/Schema.md)[]\>
 
-Defined in: [util/helper.ts:60](https://github.com/ferdisap/xml-xsd_validator-browser/blob/339c00796dd4a2c4e05b742049a9935b027659bf/src/util/helper.ts#L60)
+Defined in: [util/helper.ts:60](https://github.com/ferdisap/xml-xsd_validator-browser/blob/406d29edb6fc8c8b93eca213ae57816c5b66ad03/src/util/helper.ts#L60)
+
+Rekursif mendeteksi semua dependency XSD dari schema utama,
+handle xs:import, xs:include, dan xs:redefine
+
+Tidak menggunakan async/await, seluruhnya Promise chaining.
+Menangani error dengan console.error, tetap resolve agar tidak menghentikan chain.
+array index 0 adalah mainSchemaUrl
 
 ## Parameters
 

@@ -8,7 +8,7 @@
 
 > **baseUri**(`uri`): `string`
 
-Defined in: [validate.ts:19](https://github.com/ferdisap/xml-xsd_validator-browser/blob/339c00796dd4a2c4e05b742049a9935b027659bf/src/validate.ts#L19)
+Defined in: [validate.ts:81](https://github.com/ferdisap/xml-xsd_validator-browser/blob/406d29edb6fc8c8b93eca213ae57816c5b66ad03/src/validate.ts#L81)
 
 set and get base uri
 
@@ -21,3 +21,9 @@ set and get base uri
 ## Returns
 
 `string`
+
+always return to window href if exist or nullish string
+
+## Params
+
+uri -> set base uri if any.

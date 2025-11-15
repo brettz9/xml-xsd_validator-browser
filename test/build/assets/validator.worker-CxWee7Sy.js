@@ -1,95 +1,3 @@
-const noopTracker = {
-  trackAllocate() {
-  },
-  trackDeallocate() {
-  },
-  report() {
-  }
-};
-function callstack(numSkip) {
-  const { stack } = new Error();
-  if (!stack)
-    return void 0;
-  let pos = 0;
-  for (let i = numSkip + 2; i > 0; i -= 1) {
-    pos = stack.indexOf("\n", pos) + 1;
-  }
-  return stack.substring(pos);
-}
-class MemTrackerImpl {
-  constructor(callerDetail, callerStats) {
-    this.callerDetail = callerDetail;
-    this.callerStats = callerStats;
-    this.idCounter = 0;
-    this.disposableId = /* @__PURE__ */ new WeakMap();
-    this.disposableInfo = /* @__PURE__ */ new Map();
-  }
-  trackAllocate(obj) {
-    this.idCounter += 1;
-    this.disposableId.set(obj, this.idCounter);
-    const info = {
-      object: new WeakRef(obj),
-      classname: obj.constructor.name
-    };
-    if (this.callerDetail || this.callerStats) {
-      info.callstack = callstack(2);
-    }
-    this.disposableInfo.set(this.idCounter, info);
-  }
-  trackDeallocate(obj) {
-    const id = this.disposableId.get(obj);
-    if (id) {
-      this.disposableInfo.delete(id);
-      this.disposableId.delete(obj);
-    }
-  }
-  report() {
-    const memReport = {};
-    this.disposableInfo.forEach((info) => {
-      const classReport = memReport[info.classname] ||= {
-        garbageCollected: 0,
-        totalInstances: 0,
-        instances: []
-      };
-      classReport.totalInstances += 1;
-      const obj = info.object.deref();
-      if (obj != null) {
-        const instanceInfo = { instance: obj };
-        if (this.callerDetail) {
-          instanceInfo.caller = info.callstack;
-        }
-        classReport.instances.push(instanceInfo);
-      } else {
-        classReport.garbageCollected += 1;
-      }
-      if (this.callerStats) {
-        const callers = classReport.callers ||= {};
-        callers[info.callstack] = (callers[info.callstack] || 0) + 1;
-      }
-    });
-    return memReport;
-  }
-}
-function configure(options) {
-  if (options.enabled) {
-    memTracker = new MemTrackerImpl(options.callerDetail === true, options.callerStats === true);
-  } else {
-    memTracker = noopTracker;
-  }
-}
-function report() {
-  return memTracker.report();
-}
-let memTracker = noopTracker;
-function tracker() {
-  return memTracker;
-}
-var diag = /* @__PURE__ */ Object.freeze({
-  __proto__: null,
-  configure,
-  report,
-  tracker
-});
 Symbol.dispose ??= Symbol.for("Symbol.dispose");
 Symbol.metadata ??= Symbol.for("Symbol.metadata");
 const symXmlDisposableInternal = Symbol("XmlDisposableInternal");
@@ -106,7 +14,6 @@ class XmlDisposable {
   /** @internal */
   constructor(ptr) {
     this._ptr = ptr;
-    tracker().trackAllocate(this);
   }
   /**
    * Alias of {@link "[dispose]"}.
@@ -136,7 +43,6 @@ class XmlDisposable {
     internal.free(this._ptr);
     internal.finalization.unregister(this);
     internal.instances.delete(this._ptr);
-    tracker().trackDeallocate(this);
     this._ptr = 0;
   }
   /**
@@ -179,11 +85,6 @@ class XmlDisposable {
     return internal;
   }
 }
-var disposable = /* @__PURE__ */ Object.freeze({
-  __proto__: null,
-  XmlDisposable,
-  disposeBy
-});
 class ContextStorage {
   constructor() {
     this.storage = /* @__PURE__ */ new Map();
@@ -200,65 +101,6 @@ class ContextStorage {
   get(index) {
     return this.storage.get(index);
   }
-}
-const bufferContexts = /* @__PURE__ */ new Map();
-let contextIndex = 1;
-class XmlBufferInputProvider {
-  /**
-   * Create a new XmlBufferInputProvider with a set of buffers.
-   * @param data The buffers by their filename.
-   */
-  constructor(data) {
-    this._data = data;
-  }
-  /**
-   * Add a buffer to the provider.
-   * @param filename The filename of the buffer.
-   * @param buffer The buffer to add.
-   */
-  addBuffer(filename, buffer) {
-    this._data[filename] = buffer;
-  }
-  /**
-   * Remove a buffer from the provider.
-   * @param filename The filename of the buffer to remove.
-   */
-  removeBuffer(filename) {
-    delete this._data[filename];
-  }
-  match(filename) {
-    return this._data[filename] != null;
-  }
-  open(filename) {
-    return openBuffer(this._data[filename]);
-  }
-  read(fd, buffer) {
-    return readBuffer(fd, buffer);
-  }
-  close(fd) {
-    closeBuffer(fd);
-    return true;
-  }
-}
-function openBuffer(buffer) {
-  const fd = contextIndex;
-  bufferContexts.set(fd, [buffer, 0]);
-  contextIndex += 1;
-  return fd;
-}
-function readBuffer(fd, buffer) {
-  const context = bufferContexts.get(fd);
-  if (context == null) {
-    return -1;
-  }
-  const [data, offset] = context;
-  const length = Math.min(buffer.byteLength, data.byteLength - offset);
-  buffer.set(data.slice(offset, offset + length));
-  context[1] += length;
-  return length;
-}
-function closeBuffer(fd) {
-  bufferContexts.delete(fd);
 }
 class XmlStringOutputBufferHandler {
   constructor() {
@@ -4306,8 +4148,8 @@ var Module = /* @__PURE__ */ (() => {
     return moduleRtn;
   });
 })();
-const libxml2$1 = await Module();
-libxml2$1._xmlInitParser();
+const libxml2 = await Module();
+libxml2._xmlInitParser();
 class XmlError extends Error {
 }
 class XmlLibError extends XmlError {
@@ -4320,9 +4162,9 @@ function allocUTF8Buffer(str) {
   if (!str) {
     return [0, 0];
   }
-  const len = libxml2$1.lengthBytesUTF8(str);
-  const buf = libxml2$1._malloc(len + 1);
-  libxml2$1.stringToUTF8(str, buf, len + 1);
+  const len = libxml2.lengthBytesUTF8(str);
+  const buf = libxml2._malloc(len + 1);
+  libxml2.stringToUTF8(str, buf, len + 1);
   return [buf, len];
 }
 function withStrings(process2, ...strings) {
@@ -4333,7 +4175,7 @@ function withStrings(process2, ...strings) {
   const ret = process2(...args);
   args.forEach((buf) => {
     if (buf) {
-      libxml2$1._free(buf);
+      libxml2._free(buf);
     }
   });
   return ret;
@@ -4342,94 +4184,94 @@ function withStringUTF8(str, process2) {
   const [buf, len] = allocUTF8Buffer(str);
   const ret = process2(buf, len);
   if (buf) {
-    libxml2$1._free(buf);
+    libxml2._free(buf);
   }
   return ret;
 }
 function moveUtf8ToString(cstr) {
-  const str = libxml2$1.UTF8ToString(cstr);
-  libxml2$1._free(cstr);
+  const str = libxml2.UTF8ToString(cstr);
+  libxml2._free(cstr);
   return str;
 }
 function withCString(str, process2) {
   if (!str) {
     return process2(0, 0);
   }
-  const buf = libxml2$1._malloc(str.length + 1);
-  libxml2$1.HEAPU8.set(str, buf);
-  libxml2$1.HEAPU8[buf + str.length] = 0;
+  const buf = libxml2._malloc(str.length + 1);
+  libxml2.HEAPU8.set(str, buf);
+  libxml2.HEAPU8[buf + str.length] = 0;
   const ret = process2(buf, str.length);
-  libxml2$1._free(buf);
+  libxml2._free(buf);
   return ret;
 }
 function xmlReadString(ctxt, xmlString, url, encoding, options) {
-  return withStringUTF8(xmlString, (xmlBuf, len) => withStrings((urlBuf) => libxml2$1._xmlCtxtReadMemory(ctxt, xmlBuf, len, urlBuf, 0, options), url));
+  return withStringUTF8(xmlString, (xmlBuf, len) => withStrings((urlBuf) => libxml2._xmlCtxtReadMemory(ctxt, xmlBuf, len, urlBuf, 0, options), url));
 }
 function xmlReadMemory(ctxt, xmlBuffer, url, encoding, options) {
-  return withCString(xmlBuffer, (xmlBuf, len) => withStrings((urlBuf) => libxml2$1._xmlCtxtReadMemory(ctxt, xmlBuf, len, urlBuf, 0, options), url));
+  return withCString(xmlBuffer, (xmlBuf, len) => withStrings((urlBuf) => libxml2._xmlCtxtReadMemory(ctxt, xmlBuf, len, urlBuf, 0, options), url));
 }
 function xmlXPathRegisterNs(ctx, prefix, uri) {
-  return withStrings((bufPrefix, bufUri) => libxml2$1._xmlXPathRegisterNs(ctx, bufPrefix, bufUri), prefix, uri);
+  return withStrings((bufPrefix, bufUri) => libxml2._xmlXPathRegisterNs(ctx, bufPrefix, bufUri), prefix, uri);
 }
 function xmlHasNsProp(node, name, namespace) {
-  return withStrings((bufName, bufNamespace) => libxml2$1._xmlHasNsProp(node, bufName, bufNamespace), name, namespace);
+  return withStrings((bufName, bufNamespace) => libxml2._xmlHasNsProp(node, bufName, bufNamespace), name, namespace);
 }
 function xmlSetNsProp(node, namespace, name, value) {
-  return withStrings((bufName, bufValue) => libxml2$1._xmlSetNsProp(node, namespace, bufName, bufValue), name, value);
+  return withStrings((bufName, bufValue) => libxml2._xmlSetNsProp(node, namespace, bufName, bufValue), name, value);
 }
 function xmlNodeGetContent(node) {
-  return moveUtf8ToString(libxml2$1._xmlNodeGetContent(node));
+  return moveUtf8ToString(libxml2._xmlNodeGetContent(node));
 }
 function xmlNodeSetContent(node, content) {
-  return withStringUTF8(content, (buf, len) => libxml2$1._xmlNodeSetContentLen(node, buf, len));
+  return withStringUTF8(content, (buf, len) => libxml2._xmlNodeSetContentLen(node, buf, len));
 }
 function getValueFunc(offset, type) {
   return (ptr) => {
     if (ptr === 0) {
       throw new XmlError("Access with null pointer");
     }
-    return libxml2$1.getValue(ptr + offset, type);
+    return libxml2.getValue(ptr + offset, type);
   };
 }
 function nullableUTF8ToString(str) {
   if (str === 0) {
     return null;
   }
-  return libxml2$1.UTF8ToString(str);
+  return libxml2.UTF8ToString(str);
 }
 function getNullableStringValueFunc(offset) {
-  return (ptr) => nullableUTF8ToString(libxml2$1.getValue(ptr + offset, "i8*"));
+  return (ptr) => nullableUTF8ToString(libxml2.getValue(ptr + offset, "i8*"));
 }
 function getStringValueFunc(offset) {
   return (ptr) => {
     if (ptr === 0) {
       throw new XmlError("Access with null pointer");
     }
-    return libxml2$1.UTF8ToString(libxml2$1.getValue(ptr + offset, "i8*"));
+    return libxml2.UTF8ToString(libxml2.getValue(ptr + offset, "i8*"));
   };
 }
 function xmlGetNsList(doc, node) {
-  const nsList = libxml2$1._xmlGetNsList(doc, node);
+  const nsList = libxml2._xmlGetNsList(doc, node);
   if (nsList === 0) {
     return [];
   }
   const arr = [];
-  for (let offset = nsList / libxml2$1.HEAP32.BYTES_PER_ELEMENT; libxml2$1.HEAP32[offset]; offset += 1) {
-    arr.push(libxml2$1.HEAP32[offset]);
+  for (let offset = nsList / libxml2.HEAP32.BYTES_PER_ELEMENT; libxml2.HEAP32[offset]; offset += 1) {
+    arr.push(libxml2.HEAP32[offset]);
   }
-  libxml2$1._free(nsList);
+  libxml2._free(nsList);
   return arr;
 }
 function xmlSearchNs(doc, node, prefix) {
-  return withStrings((buf) => libxml2$1._xmlSearchNs(doc, node, buf), prefix);
+  return withStrings((buf) => libxml2._xmlSearchNs(doc, node, buf), prefix);
 }
 function xmlXPathCtxtCompile(ctxt, str) {
-  return withStrings((buf) => libxml2$1._xmlXPathCtxtCompile(ctxt, buf), str);
+  return withStrings((buf) => libxml2._xmlXPathCtxtCompile(ctxt, buf), str);
 }
 var error;
 (function(error2) {
   error2.storage = new ContextStorage();
-  error2.errorCollector = libxml2$1.addFunction((index, err) => {
+  error2.errorCollector = libxml2.addFunction((index, err) => {
     const file = XmlErrorStruct.file(err);
     const detail = {
       message: XmlErrorStruct.message(err),
@@ -4459,8 +4301,8 @@ XmlXPathObjectStruct.stringval = getStringValueFunc(24);
 })(XmlXPathObjectStruct || (XmlXPathObjectStruct = {}));
 class XmlNodeSetStruct {
   static nodeTable(nodeSetPtr, size) {
-    const tablePtr = libxml2$1.getValue(nodeSetPtr + 8, "*") / libxml2$1.HEAP32.BYTES_PER_ELEMENT;
-    return libxml2$1.HEAP32.subarray(tablePtr, tablePtr + size);
+    const tablePtr = libxml2.getValue(nodeSetPtr + 8, "*") / libxml2.HEAP32.BYTES_PER_ELEMENT;
+    return libxml2.HEAP32.subarray(tablePtr, tablePtr + size);
   }
 }
 XmlNodeSetStruct.nodeCount = getValueFunc(0, "i32");
@@ -4505,40 +4347,40 @@ XmlErrorStruct.file = getNullableStringValueFunc(16);
 XmlErrorStruct.line = getValueFunc(20, "i32");
 XmlErrorStruct.col = getValueFunc(40, "i32");
 function xmlNewCDataBlock(doc, content) {
-  return withStringUTF8(content, (buf, len) => libxml2$1._xmlNewCDataBlock(doc, buf, len));
+  return withStringUTF8(content, (buf, len) => libxml2._xmlNewCDataBlock(doc, buf, len));
 }
 function xmlNewDocComment(doc, content) {
-  return withStringUTF8(content, (buf) => libxml2$1._xmlNewDocComment(doc, buf));
+  return withStringUTF8(content, (buf) => libxml2._xmlNewDocComment(doc, buf));
 }
 function xmlNewDocNode(doc, ns, name) {
-  return withStrings((buf) => libxml2$1._xmlNewDocNode(doc, ns, buf, 0), name);
+  return withStrings((buf) => libxml2._xmlNewDocNode(doc, ns, buf, 0), name);
 }
 function xmlNewDocText(doc, content) {
-  return withStringUTF8(content, (buf, len) => libxml2$1._xmlNewDocTextLen(doc, buf, len));
+  return withStringUTF8(content, (buf, len) => libxml2._xmlNewDocTextLen(doc, buf, len));
 }
 function xmlNewNs(node, href, prefix) {
-  return withStrings((bufHref, bufPrefix) => libxml2$1._xmlNewNs(node, bufHref, bufPrefix), href, prefix ?? null);
+  return withStrings((bufHref, bufPrefix) => libxml2._xmlNewNs(node, bufHref, bufPrefix), href, prefix ?? null);
 }
 function xmlNewReference(doc, name) {
-  return withStringUTF8(name, (buf) => libxml2$1._xmlNewReference(doc, buf));
+  return withStringUTF8(name, (buf) => libxml2._xmlNewReference(doc, buf));
 }
 function xmlRegisterInputProvider(provider) {
-  const matchFunc = libxml2$1.addFunction((cfilename) => {
-    const filename = libxml2$1.UTF8ToString(cfilename);
+  const matchFunc = libxml2.addFunction((cfilename) => {
+    const filename = libxml2.UTF8ToString(cfilename);
     return provider.match(filename) ? 1 : 0;
   }, "ii");
-  const openFunc = libxml2$1.addFunction((cfilename) => {
-    const filename = libxml2$1.UTF8ToString(cfilename);
+  const openFunc = libxml2.addFunction((cfilename) => {
+    const filename = libxml2.UTF8ToString(cfilename);
     const res2 = provider.open(filename);
     return res2 === void 0 ? 0 : res2;
   }, "ii");
-  const readFunc = libxml2$1.addFunction((fd, cbuf, len) => provider.read(fd, libxml2$1.HEAPU8.subarray(cbuf, cbuf + len)), "iiii");
-  const closeFunc = libxml2$1.addFunction((fd) => provider.close(fd) ? 0 : -1, "ii");
-  const res = libxml2$1._xmlRegisterInputCallbacks(matchFunc, openFunc, readFunc, closeFunc);
+  const readFunc = libxml2.addFunction((fd, cbuf, len) => provider.read(fd, libxml2.HEAPU8.subarray(cbuf, cbuf + len)), "iiii");
+  const closeFunc = libxml2.addFunction((fd) => provider.close(fd) ? 0 : -1, "ii");
+  const res = libxml2._xmlRegisterInputCallbacks(matchFunc, openFunc, readFunc, closeFunc);
   return res >= 0;
 }
 function xmlCleanupInputProvider() {
-  libxml2$1._xmlCleanupInputCallbacks();
+  libxml2._xmlCleanupInputCallbacks();
 }
 function xmlSaveOption(options) {
   if (!options) {
@@ -4557,15 +4399,15 @@ function xmlSaveOption(options) {
   return flags;
 }
 const outputHandlerStorage = new ContextStorage();
-const outputWrite = libxml2$1.addFunction((index, buf, len) => outputHandlerStorage.get(index).write(libxml2$1.HEAPU8.subarray(buf, buf + len)), "iiii");
-const outputClose = libxml2$1.addFunction((index) => {
+const outputWrite = libxml2.addFunction((index, buf, len) => outputHandlerStorage.get(index).write(libxml2.HEAPU8.subarray(buf, buf + len)), "iiii");
+const outputClose = libxml2.addFunction((index) => {
   const ret = outputHandlerStorage.get(index).close();
   outputHandlerStorage.free(index);
   return ret;
 }, "ii");
 function xmlSaveToIO(handler, encoding, format) {
   const index = outputHandlerStorage.allocate(handler);
-  return libxml2$1._xmlSaveToIO(outputWrite, outputClose, index, 0, format);
+  return libxml2._xmlSaveToIO(outputWrite, outputClose, index, 0, format);
 }
 var XmlParserInputFlags;
 (function(XmlParserInputFlags2) {
@@ -4576,64 +4418,64 @@ var XmlParserInputFlags;
 })(XmlParserInputFlags || (XmlParserInputFlags = {}));
 function xmlCtxtParseDtd(ctxt, mem, publicId, systemId) {
   return withCString(mem, (buf, len) => {
-    const input = libxml2$1._xmlNewInputFromMemory(0, buf, len, XmlParserInputFlags.XML_INPUT_BUF_STATIC | XmlParserInputFlags.XML_INPUT_BUF_ZERO_TERMINATED);
-    return withStrings((publicIdBuf, systemIdBuf) => libxml2$1._xmlCtxtParseDtd(ctxt, input, publicIdBuf, systemIdBuf), publicId, systemId);
+    const input = libxml2._xmlNewInputFromMemory(0, buf, len, XmlParserInputFlags.XML_INPUT_BUF_STATIC | XmlParserInputFlags.XML_INPUT_BUF_ZERO_TERMINATED);
+    return withStrings((publicIdBuf, systemIdBuf) => libxml2._xmlCtxtParseDtd(ctxt, input, publicIdBuf, systemIdBuf), publicId, systemId);
   });
 }
 function xmlSaveSetIndentString(ctxt, indent) {
-  return withStringUTF8(indent, (buf) => libxml2$1._xmlSaveSetIndentString(ctxt, buf));
+  return withStringUTF8(indent, (buf) => libxml2._xmlSaveSetIndentString(ctxt, buf));
 }
-const xmlAddChild = libxml2$1._xmlAddChild;
-const xmlAddNextSibling = libxml2$1._xmlAddNextSibling;
-const xmlAddPrevSibling = libxml2$1._xmlAddPrevSibling;
-const xmlCtxtSetErrorHandler = libxml2$1._xmlCtxtSetErrorHandler;
-const xmlCtxtValidateDtd = libxml2$1._xmlCtxtValidateDtd;
-const xmlDocGetRootElement = libxml2$1._xmlDocGetRootElement;
-const xmlDocSetRootElement = libxml2$1._xmlDocSetRootElement;
-const xmlFreeDoc = libxml2$1._xmlFreeDoc;
-const xmlFreeNode = libxml2$1._xmlFreeNode;
-const xmlFreeDtd = libxml2$1._xmlFreeDtd;
-const xmlFreeParserCtxt = libxml2$1._xmlFreeParserCtxt;
-const xmlGetIntSubset = libxml2$1._xmlGetIntSubset;
-libxml2$1._xmlGetLastError;
-const xmlNewDoc = libxml2$1._xmlNewDoc;
-const xmlNewParserCtxt = libxml2$1._xmlNewParserCtxt;
-const xmlRelaxNGFree = libxml2$1._xmlRelaxNGFree;
-const xmlRelaxNGFreeParserCtxt = libxml2$1._xmlRelaxNGFreeParserCtxt;
-const xmlRelaxNGFreeValidCtxt = libxml2$1._xmlRelaxNGFreeValidCtxt;
-const xmlRelaxNGNewDocParserCtxt = libxml2$1._xmlRelaxNGNewDocParserCtxt;
-const xmlRelaxNGNewValidCtxt = libxml2$1._xmlRelaxNGNewValidCtxt;
-const xmlRelaxNGParse = libxml2$1._xmlRelaxNGParse;
-const xmlRelaxNGSetParserStructuredErrors = libxml2$1._xmlRelaxNGSetParserStructuredErrors;
-const xmlRelaxNGSetValidStructuredErrors = libxml2$1._xmlRelaxNGSetValidStructuredErrors;
-const xmlRelaxNGValidateDoc = libxml2$1._xmlRelaxNGValidateDoc;
-const xmlRemoveProp = libxml2$1._xmlRemoveProp;
-libxml2$1._xmlResetLastError;
-const xmlSaveClose = libxml2$1._xmlSaveClose;
-const xmlSaveDoc = libxml2$1._xmlSaveDoc;
-const xmlSaveTree = libxml2$1._xmlSaveTree;
-const xmlSchemaFree = libxml2$1._xmlSchemaFree;
-const xmlSchemaFreeParserCtxt = libxml2$1._xmlSchemaFreeParserCtxt;
-const xmlSchemaFreeValidCtxt = libxml2$1._xmlSchemaFreeValidCtxt;
-const xmlSchemaNewDocParserCtxt = libxml2$1._xmlSchemaNewDocParserCtxt;
-const xmlSchemaNewValidCtxt = libxml2$1._xmlSchemaNewValidCtxt;
-const xmlSchemaParse = libxml2$1._xmlSchemaParse;
-const xmlSchemaSetParserStructuredErrors = libxml2$1._xmlSchemaSetParserStructuredErrors;
-const xmlSchemaSetValidStructuredErrors = libxml2$1._xmlSchemaSetValidStructuredErrors;
-const xmlSchemaValidateDoc = libxml2$1._xmlSchemaValidateDoc;
-const xmlSchemaValidateOneElement = libxml2$1._xmlSchemaValidateOneElement;
-const xmlSetNs = libxml2$1._xmlSetNs;
-const xmlUnlinkNode = libxml2$1._xmlUnlinkNode;
-const xmlXIncludeFreeContext = libxml2$1._xmlXIncludeFreeContext;
-const xmlXIncludeNewContext = libxml2$1._xmlXIncludeNewContext;
-const xmlXIncludeProcessNode = libxml2$1._xmlXIncludeProcessNode;
-const xmlXIncludeSetErrorHandler = libxml2$1._xmlXIncludeSetErrorHandler;
-const xmlXPathCompiledEval = libxml2$1._xmlXPathCompiledEval;
-const xmlXPathFreeCompExpr = libxml2$1._xmlXPathFreeCompExpr;
-const xmlXPathFreeContext = libxml2$1._xmlXPathFreeContext;
-const xmlXPathFreeObject = libxml2$1._xmlXPathFreeObject;
-const xmlXPathNewContext = libxml2$1._xmlXPathNewContext;
-const xmlXPathSetContextNode = libxml2$1._xmlXPathSetContextNode;
+const xmlAddChild = libxml2._xmlAddChild;
+const xmlAddNextSibling = libxml2._xmlAddNextSibling;
+const xmlAddPrevSibling = libxml2._xmlAddPrevSibling;
+const xmlCtxtSetErrorHandler = libxml2._xmlCtxtSetErrorHandler;
+libxml2._xmlCtxtValidateDtd;
+const xmlDocGetRootElement = libxml2._xmlDocGetRootElement;
+const xmlDocSetRootElement = libxml2._xmlDocSetRootElement;
+const xmlFreeDoc = libxml2._xmlFreeDoc;
+const xmlFreeNode = libxml2._xmlFreeNode;
+const xmlFreeDtd = libxml2._xmlFreeDtd;
+const xmlFreeParserCtxt = libxml2._xmlFreeParserCtxt;
+const xmlGetIntSubset = libxml2._xmlGetIntSubset;
+libxml2._xmlGetLastError;
+const xmlNewDoc = libxml2._xmlNewDoc;
+const xmlNewParserCtxt = libxml2._xmlNewParserCtxt;
+const xmlRelaxNGFree = libxml2._xmlRelaxNGFree;
+const xmlRelaxNGFreeParserCtxt = libxml2._xmlRelaxNGFreeParserCtxt;
+const xmlRelaxNGFreeValidCtxt = libxml2._xmlRelaxNGFreeValidCtxt;
+const xmlRelaxNGNewDocParserCtxt = libxml2._xmlRelaxNGNewDocParserCtxt;
+const xmlRelaxNGNewValidCtxt = libxml2._xmlRelaxNGNewValidCtxt;
+const xmlRelaxNGParse = libxml2._xmlRelaxNGParse;
+const xmlRelaxNGSetParserStructuredErrors = libxml2._xmlRelaxNGSetParserStructuredErrors;
+const xmlRelaxNGSetValidStructuredErrors = libxml2._xmlRelaxNGSetValidStructuredErrors;
+const xmlRelaxNGValidateDoc = libxml2._xmlRelaxNGValidateDoc;
+const xmlRemoveProp = libxml2._xmlRemoveProp;
+libxml2._xmlResetLastError;
+const xmlSaveClose = libxml2._xmlSaveClose;
+const xmlSaveDoc = libxml2._xmlSaveDoc;
+const xmlSaveTree = libxml2._xmlSaveTree;
+const xmlSchemaFree = libxml2._xmlSchemaFree;
+const xmlSchemaFreeParserCtxt = libxml2._xmlSchemaFreeParserCtxt;
+const xmlSchemaFreeValidCtxt = libxml2._xmlSchemaFreeValidCtxt;
+const xmlSchemaNewDocParserCtxt = libxml2._xmlSchemaNewDocParserCtxt;
+const xmlSchemaNewValidCtxt = libxml2._xmlSchemaNewValidCtxt;
+const xmlSchemaParse = libxml2._xmlSchemaParse;
+const xmlSchemaSetParserStructuredErrors = libxml2._xmlSchemaSetParserStructuredErrors;
+const xmlSchemaSetValidStructuredErrors = libxml2._xmlSchemaSetValidStructuredErrors;
+const xmlSchemaValidateDoc = libxml2._xmlSchemaValidateDoc;
+const xmlSchemaValidateOneElement = libxml2._xmlSchemaValidateOneElement;
+const xmlSetNs = libxml2._xmlSetNs;
+const xmlUnlinkNode = libxml2._xmlUnlinkNode;
+const xmlXIncludeFreeContext = libxml2._xmlXIncludeFreeContext;
+const xmlXIncludeNewContext = libxml2._xmlXIncludeNewContext;
+const xmlXIncludeProcessNode = libxml2._xmlXIncludeProcessNode;
+const xmlXIncludeSetErrorHandler = libxml2._xmlXIncludeSetErrorHandler;
+const xmlXPathCompiledEval = libxml2._xmlXPathCompiledEval;
+const xmlXPathFreeCompExpr = libxml2._xmlXPathFreeCompExpr;
+const xmlXPathFreeContext = libxml2._xmlXPathFreeContext;
+const xmlXPathFreeObject = libxml2._xmlXPathFreeObject;
+const xmlXPathNewContext = libxml2._xmlXPathNewContext;
+const xmlXPathSetContextNode = libxml2._xmlXPathSetContextNode;
 var __esDecorate$4 = function(ctor, descriptorIn, decorators, contextIn, initializers, extraInitializers) {
   function accept(f) {
     if (f !== void 0 && typeof f !== "function") throw new TypeError("Function expected");
@@ -5874,55 +5716,13 @@ class XmlValidateError extends XmlLibError {
     return new XmlValidateError(details.map((d) => d.message).join(""), details);
   }
 }
-class DtdValidator {
-  constructor(dtd) {
-    this._dtd = dtd;
-  }
-  /**
-   * Validate the XmlDocument.
-   *
-   * @param doc The XmlDocument to be validated.
-   * @throws an {@link XmlValidateError} if the document is invalid.
-   */
-  validate(doc) {
-    const ctxt = xmlNewParserCtxt();
-    const errIndex = error.storage.allocate([]);
-    xmlCtxtSetErrorHandler(ctxt, error.errorCollector, errIndex);
-    const ret = xmlCtxtValidateDtd(ctxt, doc._ptr, this._dtd._ptr);
-    const errDetails = error.storage.get(errIndex);
-    error.storage.free(errIndex);
-    xmlFreeParserCtxt(ctxt);
-    if (ret !== 1) {
-      throw XmlValidateError.fromDetails(errDetails);
-    }
-  }
-  /**
-   * Alias of {@link "[dispose]"}.
-   *
-   * @see {@link "[dispose]"}
-   */
-  dispose() {
-    this[Symbol.dispose]();
-  }
-  /**
-   * Dispose the {@link XmlDtd} object.
-   *
-     To avoid resource leaks,
-     explicitly call the `Dispose` method or use the `using` declaration to declare the object.
-   *
-   * @see {@link dispose}
-   */
-  [Symbol.dispose]() {
-    this._dtd.dispose();
-  }
-}
-let RelaxNGValidator = (() => {
+(() => {
   let _classDecorators = [disposeBy(xmlRelaxNGFree)];
   let _classDescriptor;
   let _classExtraInitializers = [];
   let _classThis;
   let _classSuper = XmlDisposable;
-  var RelaxNGValidator2 = _classThis = class extends _classSuper {
+  var RelaxNGValidator = _classThis = class extends _classSuper {
     /**
      * Validate the XmlDocument.
      *
@@ -5965,18 +5765,18 @@ let RelaxNGValidator = (() => {
       if (schema === 0) {
         throw XmlValidateError.fromDetails(errDetails);
       }
-      return new RelaxNGValidator2(schema);
+      return new RelaxNGValidator(schema);
     }
   };
   __setFunctionName(_classThis, "RelaxNGValidator");
   (() => {
     const _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(_classSuper[Symbol.metadata] ?? null) : void 0;
     __esDecorate(null, _classDescriptor = { value: _classThis }, _classDecorators, { kind: "class", name: _classThis.name, metadata: _metadata }, null, _classExtraInitializers);
-    RelaxNGValidator2 = _classThis = _classDescriptor.value;
+    RelaxNGValidator = _classThis = _classDescriptor.value;
     if (_metadata) Object.defineProperty(_classThis, Symbol.metadata, { enumerable: true, configurable: true, writable: true, value: _metadata });
     __runInitializers(_classThis, _classExtraInitializers);
   })();
-  return RelaxNGValidator2 = _classThis;
+  return RelaxNGValidator = _classThis;
 })();
 let XsdValidator = (() => {
   let _classDecorators = [disposeBy(xmlSchemaFree)];
@@ -6033,82 +5833,12 @@ let XsdValidator = (() => {
   })();
   return XsdValidator2 = _classThis;
 })();
-var libxml2 = /* @__PURE__ */ Object.freeze({
-  __proto__: null,
-  DtdValidator,
-  get ParseOption() {
-    return ParseOption;
-  },
-  RelaxNGValidator,
-  XmlAttribute,
-  XmlBufferInputProvider,
-  XmlCData,
-  XmlComment,
-  XmlDocument,
-  XmlDtd,
-  XmlElement,
-  XmlEntityReference,
-  XmlError,
-  XmlLibError,
-  XmlNode,
-  XmlParseError,
-  XmlSimpleNode,
-  XmlText,
-  XmlTreeNode,
-  XmlValidateError,
-  XmlXPath,
-  XmlXPathError,
-  XsdValidator,
-  closeBuffer,
-  diag,
-  disposable,
-  openBuffer,
-  readBuffer,
-  xmlCleanupInputProvider,
-  xmlRegisterInputProvider
-});
-const loader = {
-  libxml: null,
-  initError: null
-};
-function libxml() {
-  return loader.libxml;
-}
-async function ensureLibxml2Loaded() {
-  return new Promise(async (resolve, reject) => {
-    if (loader.libxml || loader.initError) return resolve([]);
-    try {
-      loader.libxml = libxml2;
-      return resolve([]);
-    } catch (e) {
-      loader.initError = e;
-      loader.initError.data = [{
-        name: "LibInitError",
-        type: "none",
-        details: {
-          message: loader.initError?.message || String(loader.initError),
-          file: "",
-          line: 1,
-          col: 1
-        }
-      }];
-      return reject(loader.initError);
-    }
-  });
-}
-function useLibXml2() {
-  return {
-    libxml,
-    ensureLibxmlLoaded: ensureLibxml2Loaded
-  };
-}
 async function validateWellForm(xmlText) {
   const errorBags = [];
-  const { libxml: libxml3, ensureLibxmlLoaded } = useLibXml2();
-  return ensureLibxmlLoaded().then(() => {
-    libxml3().XmlDocument.fromString(xmlText);
+  try {
+    XmlDocument.fromString(xmlText, { option: XmlDocumentParseOption() });
     return Promise.resolve([]);
-  }).catch((err) => {
+  } catch (err) {
     if (err.details) {
       const detail = err.details || {};
       errorBags.push({
@@ -6135,13 +5865,9 @@ async function validateWellForm(xmlText) {
       });
     }
     return Promise.reject(errorBags);
-  });
+  }
 }
 async function createMapInputProvider(map) {
-  const { libxml: libxml3, ensureLibxmlLoaded } = useLibXml2();
-  await ensureLibxmlLoaded();
-  const xmlRegisterInputProvider2 = libxml3().xmlRegisterInputProvider;
-  const xmlCleanupInputProvider2 = libxml3().xmlCleanupInputProvider;
   const store = /* @__PURE__ */ new Map();
   const handles = /* @__PURE__ */ new Map();
   let nextFd = 1;
@@ -6219,7 +5945,7 @@ async function createMapInputProvider(map) {
   };
   const close = (fd) => handles.delete(fd);
   const register = () => {
-    return xmlRegisterInputProvider2({
+    return xmlRegisterInputProvider({
       match,
       open,
       read,
@@ -6227,7 +5953,7 @@ async function createMapInputProvider(map) {
     });
   };
   const cleanup = () => {
-    xmlCleanupInputProvider2();
+    xmlCleanupInputProvider();
   };
   return {
     match,
@@ -6357,10 +6083,8 @@ async function getSchemaText(file) {
   }
 }
 async function validateXmlTowardXsd(file, mainSchemaUrl = null, stopOnFailure = true) {
-  const { libxml: libxml3, ensureLibxmlLoaded } = useLibXml2();
   let provider = null;
   const bags = [];
-  await ensureLibxmlLoaded();
   let xmlText = "";
   try {
     xmlText = await getSchemaText(file);
@@ -6446,7 +6170,7 @@ async function validateXmlTowardXsd(file, mainSchemaUrl = null, stopOnFailure = 
   const mainXsdText = schemas[0].contents;
   let xmlDoc;
   try {
-    xmlDoc = libxml3().XmlDocument.fromString(xmlText, { option: getXmlDocumentParseOption() });
+    xmlDoc = XmlDocument.fromString(xmlText, { option: XmlDocumentParseOption() });
   } catch (error2) {
     console.log(error2);
     console.warn("Warning: XML and XSD Document fail to parsed");
@@ -6467,7 +6191,7 @@ async function validateXmlTowardXsd(file, mainSchemaUrl = null, stopOnFailure = 
   }
   let xsdDoc;
   try {
-    xsdDoc = libxml3().XmlDocument.fromString(mainXsdText);
+    xsdDoc = XmlDocument.fromString(mainXsdText);
   } catch (error2) {
     console.warn("Warning: XML and XSD Document fail to parsed");
     bags.push({
@@ -6487,7 +6211,7 @@ async function validateXmlTowardXsd(file, mainSchemaUrl = null, stopOnFailure = 
   }
   let validator;
   try {
-    validator = libxml3().XsdValidator.fromDoc(xsdDoc);
+    validator = XsdValidator.fromDoc(xsdDoc);
   } catch (error2) {
     console.warn("Warning: Failed to create Xsd validator");
     bags.push({
@@ -6528,11 +6252,241 @@ async function validateXmlTowardXsd(file, mainSchemaUrl = null, stopOnFailure = 
   provider?.cleanup();
   return Promise.reject(bags);
 }
-self.uri = "";
-self.XmlDocumentParseOption = ParseOption.XML_PARSE_DEFAULT;
-function getXmlDocumentParseOption() {
-  return self.XmlDocumentParseOption;
+function findRequiredDtd(xmlText) {
+  const doctypeRegex = /<!DOCTYPE\s+([^\s>]+)\s+([^>]*)>/i;
+  const doctypeMatch = doctypeRegex.exec(xmlText);
+  if (!doctypeMatch) {
+    return {
+      type: "none",
+      publicId: null,
+      systemId: null,
+      rootName: null,
+      internalSubset: null,
+      hasInternal: false,
+      hasExternal: false
+    };
+  }
+  const rootName = doctypeMatch[1];
+  const insideDoctype = doctypeMatch[2];
+  const internalSubsetMatch = /\[([\s\S]*?)\]\s*>/i.exec(xmlText);
+  const internalSubset = internalSubsetMatch ? internalSubsetMatch[1].trim() : null;
+  const hasInternal = internalSubset !== null;
+  const publicRegex = /PUBLIC\s+"([^"]+)"\s+"([^"]+)"/i;
+  const publicMatch = publicRegex.exec(insideDoctype);
+  const systemRegex = /SYSTEM\s+"([^"]+)"/i;
+  const systemMatch = systemRegex.exec(insideDoctype);
+  let type = "none";
+  let publicId = null;
+  let systemId = null;
+  let hasExternal = false;
+  if (publicMatch) {
+    type = "public";
+    publicId = publicMatch[1];
+    systemId = publicMatch[2];
+    hasExternal = true;
+  } else if (systemMatch) {
+    type = "external";
+    systemId = systemMatch[1];
+    hasExternal = true;
+  }
+  if (publicMatch && hasInternal) {
+    type = "public+external";
+  } else if (systemMatch && hasInternal) {
+    type = "external";
+  } else if (!publicMatch && !systemMatch && hasInternal) {
+    type = "internal";
+  }
+  if (type === "external" || type === "public+external") {
+    try {
+      const uri = new URL(systemId);
+      systemId = uri.toString();
+    } catch (error2) {
+      const uri = new URL(systemId, baseUri(null));
+      systemId = uri.toString();
+    }
+  }
+  return {
+    type,
+    publicId,
+    systemId,
+    rootName,
+    internalSubset,
+    hasInternal,
+    hasExternal
+  };
 }
+async function findEntitysNotations(info) {
+  const isInfoAsDtdInfo = !(typeof info === "string");
+  let entities = [];
+  let notations = [];
+  const matchEntityNotation = (text) => {
+    const entityRegex = /<!ENTITY\s+([a-zA-Z0-9._:-]+)\s+(?:(PUBLIC)\s+"([^"]+)"\s+"([^"]+)"|(SYSTEM)\s+"([^"]+)"|"([^"]+)")(?:(?:\s+NDATA\s+([a-zA-Z0-9._:-]+)))?\s*>/g;
+    const notationRegex = /<!NOTATION\s+([a-zA-Z0-9._:-]+)\s+(?:(PUBLIC)\s+"([^"]+)"(?:\s+SYSTEM\s+"([^"]+)")?|SYSTEM\s+"([^"]+)")\s*>/g;
+    let m;
+    while ((m = entityRegex.exec(text)) !== null) {
+      const name = m[1];
+      !!m[2];
+      const publicId = m[3] ?? null;
+      const publicSystemId = m[4] ?? null;
+      !!m[5];
+      const systemId = m[6] ?? publicSystemId ?? null;
+      const internalText = m[7] ?? null;
+      const ndata = m[8] ?? null;
+      entities.push({
+        name,
+        publicId,
+        systemId: internalText ? null : systemId,
+        // internal entity -> no systemId
+        notationName: ndata ?? null
+      });
+    }
+    while ((m = notationRegex.exec(text)) !== null) {
+      const name = m[1];
+      !!m[2];
+      const publicId = m[3] ?? null;
+      const publicSystemId = m[4] ?? null;
+      const systemOnly = m[5] ?? null;
+      const systemId = publicSystemId ?? systemOnly ?? null;
+      notations.push({
+        name,
+        publicId,
+        systemId
+      });
+    }
+  };
+  if (isInfoAsDtdInfo) {
+    const subsetText = info.internalSubset;
+    if (subsetText) matchEntityNotation(subsetText);
+    if (info.hasExternal && info.systemId) {
+      return fetch(info.systemId).then((response) => response.text()).then((dtdText) => findEntitysNotations(dtdText)).then((subset) => {
+        entities.push(...subset.entities);
+        notations.push(...subset.notations);
+        return { entities, notations };
+      });
+    }
+  } else {
+    matchEntityNotation(info);
+  }
+  return { entities, notations };
+}
+function isNotValidName(name, isNotation = true) {
+  if (!name || name === "" || !isNaN(Number(name))) {
+    return {
+      "name": isNotation ? "NotationNotValid" : "EntityNotValid",
+      "type": "dtd",
+      "detail": {
+        "message": isNotation ? `Notation ${name} is not valid name.` : `Entity ${name} is not valid name.`,
+        "file": "",
+        "line": 1,
+        "col": 1
+      }
+    };
+  }
+}
+async function validate(data, stopOnFailure) {
+  const bags = [];
+  const option = XmlEntityNotationOption();
+  if (option.notations) {
+    let allowedNotation = option.notations.allowedNotation;
+    for (const notation of data.notations) {
+      if (option.notations.publicId) {
+        if (allowedNotation && allowedNotation.find((n) => n.name === notation.name)) {
+          if (notation.publicId && !allowedNotation.find((n) => n.publicId === notation.publicId)) {
+            bags.push({
+              "name": "NotationNotValid",
+              "type": "dtd",
+              "detail": {
+                "message": `Notation ${notation.name} with public id ${notation.publicId} is not available`,
+                "file": "",
+                "line": 1,
+                "col": 1
+              }
+            });
+            if (stopOnFailure) return bags.length ? Promise.reject(bags) : Promise.resolve(bags);
+          }
+        }
+        let isnv;
+        if (isnv = isNotValidName(notation.publicId, true)) {
+          bags.push(isnv);
+          if (stopOnFailure) return bags.length ? Promise.reject(bags) : Promise.resolve(bags);
+        }
+      }
+      if (option.notations.name) {
+        if (allowedNotation) {
+          if (!allowedNotation.find((n) => n.name === notation.name)) {
+            bags.push({
+              "name": "NotationNotValid",
+              "type": "dtd",
+              "detail": {
+                "message": `Notation ${notation.name} is not available.`,
+                "file": "",
+                "line": 1,
+                "col": 1
+              }
+            });
+            if (stopOnFailure) return bags.length ? Promise.reject(bags) : Promise.resolve(bags);
+          }
+        }
+        let isnv;
+        if (isnv = isNotValidName(notation.name, true)) {
+          bags.push(isnv);
+          if (stopOnFailure) return bags.length ? Promise.reject(bags) : Promise.resolve(bags);
+        }
+      }
+    }
+  }
+  if (option.entity) {
+    for (const entity of data.entities) {
+      if (entity.notationName) {
+        if (!data.notations.find((n) => n.name === entity.notationName)) {
+          if (option.entity.validNotation) {
+            bags.push({
+              "name": "EntityNotValid",
+              "type": "dtd",
+              "detail": {
+                "message": `Entity ${entity.name} should have notation`,
+                "file": "",
+                "line": 1,
+                "col": 1
+              }
+            });
+            if (stopOnFailure) return bags.length ? Promise.reject(bags) : Promise.resolve(bags);
+          }
+        }
+        let isnv;
+        if (isnv = isNotValidName(entity.name, false)) {
+          bags.push(isnv);
+          if (stopOnFailure) return bags.length ? Promise.reject(bags) : Promise.resolve(bags);
+        }
+      }
+    }
+  }
+  return bags.length ? Promise.reject(bags) : Promise.resolve(bags);
+}
+async function validateEntityNotation(xmlText, stopOnFailure = true) {
+  return validate(await findEntitysNotations(findRequiredDtd(xmlText)), stopOnFailure);
+}
+function XmlDocumentParseOption(opt = null) {
+  return typeof opt === "number" ? self.Option_XmlDocumentParse = opt : self.Option_XmlDocumentParse;
+}
+function XmlEntityNotationOption(opt = null) {
+  return opt ? self.Option_XmlEntityNotation = opt : self.Option_XmlEntityNotation;
+}
+ParseOption.XML_PARSE_DTDLOAD | // Load external DTD
+ParseOption.XML_PARSE_DTDATTR | // Default attributes from DTD
+ParseOption.XML_PARSE_NOENT;
+const defaultEntityNotationValidationOption = {
+  entity: {
+    validNotation: true
+  },
+  notations: {
+    name: true,
+    publicId: true
+  }
+};
+self.uri = "";
+self.Option_XmlDocumentParse = ParseOption.XML_PARSE_DEFAULT;
+self.Option_XmlEntityNotation = defaultEntityNotationValidationOption;
 function baseUri(uri = null) {
   if (uri) {
     self.uri = uri;
@@ -6546,6 +6500,7 @@ function baseUri(uri = null) {
 async function validating(xmlText, mainSchemaUrl = null, stopOnFailure = true) {
   return Promise.all([
     validateWellForm(xmlText),
+    validateEntityNotation(xmlText, stopOnFailure),
     validateXmlTowardXsd(xmlText, mainSchemaUrl, stopOnFailure)
   ]).then(() => Promise.resolve([])).catch((bags) => Promise.reject(bags));
 }
@@ -6577,8 +6532,18 @@ self.postMessage({
 });
 self.onmessage = (e) => {
   const { id, payload } = e.data;
-  const { xmlText, mainSchemaUrl, stopOnFailure, duration, base } = payload;
-  if (base) baseUri(base);
+  if (payload.onBefore) {
+    if (payload.onBefore.set_xml_docoument_parse_option) {
+      XmlDocumentParseOption(payload.onBefore.set_xml_docoument_parse_option);
+    }
+    if (payload.onBefore.set_xml_entity_notation_option) {
+      XmlEntityNotationOption(payload.onBefore.set_xml_entity_notation_option);
+    }
+    if (payload.onBefore.base) {
+      baseUri(payload.onBefore.base);
+    }
+  }
+  const { xmlText, mainSchemaUrl, stopOnFailure, duration } = payload;
   const errorBags = [];
   run(xmlText, mainSchemaUrl, stopOnFailure, duration).then((i) => {
     errorBags.push(...i);

@@ -8,7 +8,7 @@
 
 > **UseWorker** = `object`
 
-Defined in: [types/types.ts:44](https://github.com/ferdisap/xml-xsd_validator-browser/blob/339c00796dd4a2c4e05b742049a9935b027659bf/src/types/types.ts#L44)
+Defined in: [types/types.ts:44](https://github.com/ferdisap/xml-xsd_validator-browser/blob/406d29edb6fc8c8b93eca213ae57816c5b66ad03/src/types/types.ts#L44)
 
 🔹 Interface utama untuk menggunakan worker di sisi main thread.
 
@@ -16,9 +16,9 @@ Defined in: [types/types.ts:44](https://github.com/ferdisap/xml-xsd_validator-br
 
 ### validate()
 
-> **validate**(`xmlText`, `mainSchemaUrl`, `stopOnFailure?`): `Promise`\<[`WorkerResponse`](WorkerResponse.md)\>
+> **validate**(`xmlText`, `mainSchemaUrl?`, `stopOnFailure?`): `Promise`\<[`WorkerResponse`](WorkerResponse.md)\>
 
-Defined in: [types/types.ts:52](https://github.com/ferdisap/xml-xsd_validator-browser/blob/339c00796dd4a2c4e05b742049a9935b027659bf/src/types/types.ts#L52)
+Defined in: [types/types.ts:52](https://github.com/ferdisap/xml-xsd_validator-browser/blob/406d29edb6fc8c8b93eca213ae57816c5b66ad03/src/types/types.ts#L52)
 
 Jalankan proses validasi XML terhadap XSD.
 
@@ -30,7 +30,7 @@ Jalankan proses validasi XML terhadap XSD.
 
 Teks XML yang akan divalidasi.
 
-##### mainSchemaUrl
+##### mainSchemaUrl?
 
 URL XSD utama (boleh `null`).
 
@@ -54,9 +54,43 @@ Promise yang mengembalikan hasil berupa `WorkerResponse`.
 
 > **terminate**(): `void`
 
-Defined in: [types/types.ts:57](https://github.com/ferdisap/xml-xsd_validator-browser/blob/339c00796dd4a2c4e05b742049a9935b027659bf/src/types/types.ts#L57)
+Defined in: [types/types.ts:57](https://github.com/ferdisap/xml-xsd_validator-browser/blob/406d29edb6fc8c8b93eca213ae57816c5b66ad03/src/types/types.ts#L57)
 
 Terminasi worker agar berhenti bekerja dan melepaskan resource.
+
+#### Returns
+
+`void`
+
+***
+
+### onBefore()
+
+> **onBefore**(`data`): `void`
+
+Defined in: [types/types.ts:59](https://github.com/ferdisap/xml-xsd_validator-browser/blob/406d29edb6fc8c8b93eca213ae57816c5b66ad03/src/types/types.ts#L59)
+
+#### Parameters
+
+##### data
+
+\{ `set_xml_docoument_parse_option?`: `number`; `set_xml_entity_notation_option?`: [`IValidateEntityNotationOption`](../interfaces/IValidateEntityNotationOption.md); `base?`: `string`; \}
+
+###### set_xml_docoument_parse_option?
+
+`number`
+
+###### set_xml_entity_notation_option?
+
+[`IValidateEntityNotationOption`](../interfaces/IValidateEntityNotationOption.md)
+
+###### base?
+
+`string`
+
+base uri
+
+| `undefined`
 
 #### Returns
 

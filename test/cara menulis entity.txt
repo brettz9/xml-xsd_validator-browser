@@ -1,0 +1,37 @@
+cara menulis entity
+
+<!ENTITY myLogo SYSTEM "logo.png">
+<!ENTITY userName "Ferdi Arrahman">
+<!ENTITY name SYSTEM "external-file" NDATA notationName>
+
+<!ENTITY entityName PUBLIC "public-id" "system-id">
+<!ENTITY commonData PUBLIC "-//MyCompany//ENTITY Common Data v1//EN" "common.xml">
+
+
+
+
+<!-- internal Parsed entity -->
+<!ENTITY name "replacement text">
+eg.: <!ENTITY copyright "© 2025 Ferdi Inc.">
+
+<!-- external Parsed entity-->
+<!ENTITY name SYSTEM "system-id">
+<!ENTITY name PUBLIC "public-id" "system-id">
+eg:. <!ENTITY file SYSTEM "file.xml">
+eg:. <!ENTITY header PUBLIC "-//MYORG//Header//EN" "header.xml">
+
+<!-- external Unparsed entity -->
+<!ENTITY name SYSTEM "system-id" NDATA notationName>
+<!ENTITY name PUBLIC "public-id" "system-id" NDATA notationName>
+eg.: <!ENTITY ICN-C0419-S1000D0381-001-01 SYSTEM "ICN-C0419-S1000D0381-001-01.CGM" NDATA cgm >
+
+<!-- notation system identifier -->
+<!NOTATION name SYSTEM "system-id">
+eg: <!NOTATION cgm SYSTEM "image/cgm">
+<!-- notation public identifier -->
+<!NOTATION cgm PUBLIC "-//USA-DOD//NOTATION Computer Graphics Metafile//EN">
+<!-- notation kombinasi -->
+<!NOTATION jpeg PUBLIC "public-id" SYSTEM "system-id">
+eg.: <!NOTATION jpeg PUBLIC "JPEG" SYSTEM "image/jpeg">
+
+kesimpulan: system id adalah url / uri

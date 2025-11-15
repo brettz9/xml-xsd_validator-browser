@@ -7,15 +7,27 @@ type LibLoader = {
   initError: any | null;
 };
 
+/**
+ * @deprecated
+ * @returns 
+ */
 export const loader: LibLoader = {
   libxml: null as any,
   initError: null as any,
 };
 
+/**
+ * @deprecated
+ * @returns 
+ */
 export function libxml() {
   return loader.libxml
 }
 
+/**
+ * @deprecated
+ * @returns 
+ */
 export async function ensureLibxml2Loaded() {
   return new Promise(async (resolve, reject) => {
     if (loader.libxml || loader.initError) return resolve([]);
@@ -41,6 +53,10 @@ export async function ensureLibxml2Loaded() {
   });
 }
 
+/**
+ * @deprecated
+ * @returns 
+ */
 export function useLibXml2() {
   return {
     libxml, ensureLibxmlLoaded: ensureLibxml2Loaded

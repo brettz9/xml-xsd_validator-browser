@@ -8,6 +8,6 @@
 
 > **ValidationType** = `"xsd"` \| `"dtd"` \| `"form"` \| `"none"`
 
-Defined in: [types/types.ts:77](https://github.com/ferdisap/xml-xsd_validator-browser/blob/339c00796dd4a2c4e05b742049a9935b027659bf/src/types/types.ts#L77)
+Defined in: [types/types.ts:81](https://github.com/ferdisap/xml-xsd_validator-browser/blob/406d29edb6fc8c8b93eca213ae57816c5b66ad03/src/types/types.ts#L81)
 
 🔹 Jenis validasi XML yang sedang dilakukan.

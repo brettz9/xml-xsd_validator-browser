@@ -1,31 +1,72 @@
 import { validateWellForm } from "./validateFormWell";
-import { UseWorker, ValidationInfo, ValidationPayload, WorkerPayload, WorkerResponse } from "./types/types";
+import { IValidateEntityNotationOption, UseWorker, ValidationInfo, ValidationPayload, WorkerPayload, WorkerResponse } from "./types/types";
 import { validateXmlTowardXsd } from "./validateTowardXsd";
 import { ParseOption } from "libxml2-wasm";
+import { notationXmlToObject, validateEntityNotation } from "./validateDtd";
+// import * as libxml2 from "libxml2-wasm";
+
+// top.libxml2 = libxml2
 
 declare global {
   var uri: string;
-  var XmlDocumentParseOption: number;
+  var Option_XmlDocumentParse: number;
+  var Option_XmlEntityNotation: IValidateEntityNotationOption
+}
+
+/**
+ * get and set base xml document parse option
+ * @param opt 
+ * @returns 
+ */
+export function XmlDocumentParseOption(opt: number | null = null) {
+  return typeof opt === 'number' ? ((self.Option_XmlDocumentParse = opt) as number) : self.Option_XmlDocumentParse;
+}
+
+/**
+ * get and set base xml entity notation validation option
+ * @param opt 
+ * @returns 
+ */
+export function XmlEntityNotationOption(opt: IValidateEntityNotationOption | null = null) {
+  return opt ? (self.Option_XmlEntityNotation = opt) : self.Option_XmlEntityNotation;
+}
+
+export const S1000dDocParseOption = ParseOption.XML_PARSE_DTDLOAD | // Load external DTD
+  ParseOption.XML_PARSE_DTDATTR | // Default attributes from DTD
+  ParseOption.XML_PARSE_NOENT; // Expand internal + external ENTITY
+
+export const S1000dAllowedNotationUrl = "https://ferdisap.github.io/schema/s1000d/S1000D_5-0/notations/notations.xml";
+
+/**
+ * get S1000D allowed notation
+ * @param opt 
+ * @returns 
+ */
+export async function getS1000dAllowedNotation(){
+  return notationXmlToObject(S1000dAllowedNotationUrl);
+}
+
+/**
+ * get S1000d document parse option
+ * @returns 
+ */
+export function getS1000dDocParseOption(){
+  return S1000dDocParseOption;
+}
+
+export const defaultEntityNotationValidationOption: IValidateEntityNotationOption = {
+  entity: {
+    validNotation: true
+  },
+  notations: {
+    name: true,
+    publicId: true
+  }
 }
 
 self.uri = '';
-self.XmlDocumentParseOption = ParseOption.XML_PARSE_DEFAULT;
-
-export function setXmlDocumentParseOption(option: ParseOption) {
-  self.XmlDocumentParseOption = option
-}
-
-export function getXmlDocumentParseOption() {
-  return self.XmlDocumentParseOption
-}
-
-export function s1000dDocParseOption() {
-  // 14 adalah penjumlahan ini
-  // ParseOption.XML_PARSE_DTDLOAD | // Load external DTD
-  // ParseOption.XML_PARSE_DTDATTR | // Default attributes from DTD
-  // ParseOption.XML_PARSE_NOENT; // Expand internal + external ENTITY
-  return 14
-}
+self.Option_XmlDocumentParse = ParseOption.XML_PARSE_DEFAULT;
+self.Option_XmlEntityNotation = defaultEntityNotationValidationOption;
 
 function WorkerWrapper() {
   return new Worker(new URL("./worker/validator.worker.js", import.meta.url), {
@@ -51,6 +92,7 @@ export function baseUri(uri: string | null = null): string {
 export async function validateXml(xmlText: string, mainSchemaUrl: string | null = null, stopOnFailure: boolean = true): Promise<ValidationInfo[]> {
   const errors: ValidationInfo[] = [];
   return validateWellForm(xmlText)
+    .then(() => validateEntityNotation(xmlText))
     .then(() => validateXmlTowardXsd(xmlText, mainSchemaUrl, stopOnFailure))
     .then(() => Promise.resolve(errors))
     .catch(e => {
@@ -96,14 +138,15 @@ export function useWorker(): UseWorker {
     { resolve: (res: WorkerResponse) => void; reject: (err?: any) => void }
   >();
 
-  // let validatorWorker: Worker = new ValidatorWorker();
   let validatorWorker: Worker = WorkerWrapper();
 
   let _resolveReady: (v: any) => void;
   const readyPromise = new Promise((resolve) => (_resolveReady = resolve));
 
+  let _base :string | null = null;
+  let _onBefore :ValidationPayload["onBefore"] | null = null;
+
   validatorWorker!.onmessage = (e: MessageEvent<WorkerResponse>) => {
-    // console.log("✅ Worker message:", e.data);
     if (e.data.ready) {
       console.log("[xml-xsd-validator-browser] Worker is ready ✅");
       _resolveReady(true);
@@ -128,18 +171,20 @@ export function useWorker(): UseWorker {
     console.error("⚠️ Worker message error:", e);
   };
 
-
   validatorWorker!.onerror = async function (e: ErrorEvent) {
     throw new Error("Worker error");
+  }
+
+  const onBefore = (data: ValidationPayload["onBefore"]) => {
+    _onBefore = data;
   }
 
   const terminate = async () => {
     validatorWorker!.terminate();
     console.log("[xml-xsd-validator-browser] Worker is terminated ✅");
-
   }
 
-  const validate = async (xmlText: string, mainSchemaUrl: string | null, stopOnFailure: boolean = true): Promise<WorkerResponse> => {
+  const validate = async (xmlText: string, mainSchemaUrl: string | null = null, stopOnFailure: boolean = true): Promise<WorkerResponse> => {
     // console.log("before validate by worker");
     const id = crypto.randomUUID();
 
@@ -163,17 +208,19 @@ export function useWorker(): UseWorker {
       }, 5000);
       if (await readyPromise) {
         clearTimeout(timer);
-        const payload: WorkerPayload<ValidationPayload> = {
+        const wpd: WorkerPayload<ValidationPayload> = {
           id,
-          payload: { xmlText, mainSchemaUrl, stopOnFailure, base: window.location.href }
+          payload: { xmlText, mainSchemaUrl, stopOnFailure}
         }
+        if(_onBefore) wpd.payload.onBefore = _onBefore
         // console.log("before post to worker");
-        validatorWorker!.postMessage(payload)
+        console.log(wpd)
+        validatorWorker!.postMessage(wpd)
       }
     })
   }
 
   return {
-    validate, terminate,
+    validate, terminate, onBefore
   }
 }

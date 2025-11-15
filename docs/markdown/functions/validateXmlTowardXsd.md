@@ -8,7 +8,7 @@
 
 > **validateXmlTowardXsd**(`file`, `mainSchemaUrl`, `stopOnFailure`): `Promise`\<[`WorkerBags`](../type-aliases/WorkerBags.md)\>
 
-Defined in: [validateTowardXsd.ts:13](https://github.com/ferdisap/xml-xsd_validator-browser/blob/339c00796dd4a2c4e05b742049a9935b027659bf/src/validateTowardXsd.ts#L13)
+Defined in: [validateTowardXsd.ts:15](https://github.com/ferdisap/xml-xsd_validator-browser/blob/406d29edb6fc8c8b93eca213ae57816c5b66ad03/src/validateTowardXsd.ts#L15)
 
 logic validate xml toward xsd.
 

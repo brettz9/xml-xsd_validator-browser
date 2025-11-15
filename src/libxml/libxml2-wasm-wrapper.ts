@@ -64,9 +64,17 @@
 // import * as raw from "../../node_modules/libxml2-wasm/lib/libxml2raw.mjs";
 import * as raw from "../../node_modules/libxml2-wasm/lib/index.mjs";
 
+/**
+ * @deprecated
+ */
 export type LibXml2 = any;
 const modAny = raw as unknown as Record<string, any>;
 
+/**
+ * @deprecated
+ * @param timeoutMs 
+ * @returns 
+ */
 export async function init_lib(timeoutMs = 10000): Promise<LibXml2> {
   const maybeDefault = Reflect.get(modAny, "default");
 

@@ -1,7 +1,9 @@
-import { ValidationInfo, WorkerResponse } from "../src/types";
+import { ValidationInfo, WorkerResponse, IValidateEntityNotationOption } from "../src/types/types";
+import { constructEntityNotationValidationOption } from "../src/util/helper";
 // import { ValidationInfo, WorkerResponse } from "../dist/esm/types";
-import { useWorker, validateXml } from "../src/validate";
+import { getS1000dAllowedNotation, useWorker, validateXml, XmlEntityNotationOption } from "../src/validate";
 // import { useWorker, validateXml } from "../dist/esm/validate";
+import { findRequiredDtd, findEntitysNotations, validateEntityNotation } from "../src/validateDtd";
 
 // const fileurl = "/test/xml_file.xml";
 // const xmlText = await getXmlText(fileurl);
@@ -48,6 +50,7 @@ function test1() {
     .catch(bags => {
       // console.log(bags) // returning array contains object has name:"XMLValidateError"
       appendToHTML("for_test_1", bags);
+      // console.log('test1', bags);
     })
 }
 test1()
@@ -85,7 +88,10 @@ async function test2() {
   //     </items>
   //   </purchaseOrder>`;
   // const mainSchemaUrl = "./test/purchaseOrder.xsd";
-  const { validate, terminate } = useWorker()
+  const { validate, terminate, onBefore } = useWorker();
+  onBefore({
+    "base": window.location.href,
+  })
   validate(xmlText, mainSchemaUrl)
     // never get resolved if the file is valid
     .then((response: WorkerResponse) => {
@@ -96,7 +102,9 @@ async function test2() {
     .catch((response: WorkerResponse) => {
       const { id, status, bags } = response;
       // console.log(id, status, bags)
+      // 1. Failed to find required schemas
       appendToHTML("for_test_2", bags); // returning array contains object has name:"Fetch Error" because CORS
+      // console.log('test2', bags);
       terminate()
     })
 
@@ -109,13 +117,45 @@ async function test3() {
   validateXml(xmlText)
     .catch(bags => {
       // console.log(bags) // returning array contains object has name:"XMLValidateError"
+      // 1. Element 'dmRef': Missing child element(s). Expected is ( dmRefIdent ).
+      // 2. element 'graphic', attribute 'infoEntityIdent': 'ICN-C0419-S1000D0381-001-01' is not a valid value of the atomic type 'xs:ENTITY'.
       appendToHTML("for_test_3", bags);
+      // console.log('test3', bags);
     })
 
 }
 test3()
 
-// expected
+async function test4() {
+  const mainSchemaUrl = "http://www.s1000d.org/S1000D_5-0/xml_schema_flat/appliccrossreftable.xsd"; // CORS
+  const xmlText = `<?xml version="1.0" encoding="UTF-8"?>
+    <!DOCTYPE dmodule SYSTEM "test/entities.dtd" [
+      <!ENTITY ICN-C0419-S1000D0381-001-01 SYSTEM "ICN-C0419-S1000D0381-001-01.CGM" NDATA cgm >
+      <!NOTATION cgm PUBLIC "-//sUSA-DOD//NOTATION Computer Graphics Metafile//EN" >
+    ]>
+    <dmodule>
+    </dmodule>`;
+  const allowedNotation = await getS1000dAllowedNotation()
+  const constructed = constructEntityNotationValidationOption(allowedNotation);
+
+  const { validate, terminate, onBefore } = useWorker();
+  onBefore({
+    "set_xml_entity_notation_option": constructed,
+    "base": window.location.href
+  })
+  validate(xmlText, mainSchemaUrl)
+    // never get resolved if the file is valid
+    .catch((response: WorkerResponse) => {
+      const { id, status, bags } = response;
+      // 1. Notation cgm with public id -//sUSA-DOD//NOTATION Computer Graphics Metafile//EN is not available
+      appendToHTML("for_test_4", bags);
+      console.log('test4', bags);
+      terminate()
+    })
+}
+test4()
+
+// expected test 1
 /**
 [
   {

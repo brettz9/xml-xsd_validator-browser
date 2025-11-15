@@ -8,7 +8,7 @@
 
 > **viteWorkerPlugin**(`options`): `object`
 
-Defined in: [plugins/viteWorkerPlugin.ts:20](https://github.com/ferdisap/xml-xsd_validator-browser/blob/339c00796dd4a2c4e05b742049a9935b027659bf/src/plugins/viteWorkerPlugin.ts#L20)
+Defined in: [plugins/viteWorkerPlugin.ts:20](https://github.com/ferdisap/xml-xsd_validator-browser/blob/406d29edb6fc8c8b93eca213ae57816c5b66ad03/src/plugins/viteWorkerPlugin.ts#L20)
 
 Plugin untuk menangani `?worker` import di Vite.
 File worker akan dibundle secara terpisah tanpa hash.

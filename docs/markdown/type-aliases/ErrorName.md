@@ -6,8 +6,8 @@
 
 # Type Alias: ErrorName
 
-> **ErrorName** = `"FetchError"` \| `"XSDValidatorParseError"` \| `"XMLParseError"` \| `"UnknownError"` \| `"XMLValidateError"` \| `"ParseTimeout"` \| `"LibInitError"` \| `"RegisteringProviderError"` \| `"WorkerResponseTimeout"`
+> **ErrorName** = `"FetchError"` \| `"XSDValidatorParseError"` \| `"XMLParseError"` \| `"UnknownError"` \| `"XMLValidateError"` \| `"ParseTimeout"` \| `"LibInitError"` \| `"RegisteringProviderError"` \| `"WorkerResponseTimeout"` \| `"NotationNotValid"` \| `"EntityNotValid"`
 
-Defined in: [types/types.ts:63](https://github.com/ferdisap/xml-xsd_validator-browser/blob/339c00796dd4a2c4e05b742049a9935b027659bf/src/types/types.ts#L63)
+Defined in: [types/types.ts:65](https://github.com/ferdisap/xml-xsd_validator-browser/blob/406d29edb6fc8c8b93eca213ae57816c5b66ad03/src/types/types.ts#L65)
 
 🔹 Jenis-jenis nama error yang mungkin muncul selama validasi XML.
