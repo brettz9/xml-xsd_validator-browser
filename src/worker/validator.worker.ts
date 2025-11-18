@@ -1,8 +1,8 @@
-import { IValidateEntityNotationOption, ValidationPayload, ValidationResponse, WorkerBags, WorkerPayload, WorkerResponse } from "../types/types";
-import { baseUri, XmlDocumentParseOption, XmlEntityNotationOption } from "../validate";
-import { validateEntityNotation } from "../validateDtd";
-import { validateWellForm } from "../validateFormWell";
-import { validateXmlTowardXsd } from "../validateTowardXsd";
+import { IValidateEntityNotationOption, ValidationPayload, ValidationResponse, WorkerBags, WorkerPayload, WorkerResponse } from "../types/types.js";
+import { baseUri, XmlDocumentParseOption, XmlEntityNotationOption } from "../validate.js";
+import { validateEntityNotation } from "../validateDtd.js";
+import { validateWellForm } from "../validateFormWell.js";
+import { validateXmlTowardXsd } from "../validateTowardXsd.js";
 
 async function validating(xmlText: string, mainSchemaUrl: string | null = null, stopOnFailure: boolean = true) {
   return Promise.all([

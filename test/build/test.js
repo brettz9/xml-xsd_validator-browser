@@ -85,39 +85,6 @@ class XmlDisposable {
     return internal;
   }
 }
-class ContextStorage {
-  constructor() {
-    this.storage = /* @__PURE__ */ new Map();
-    this.index = 0;
-  }
-  allocate(value) {
-    this.index += 1;
-    this.storage.set(this.index, value);
-    return this.index;
-  }
-  free(index) {
-    this.storage.delete(index);
-  }
-  get(index) {
-    return this.storage.get(index);
-  }
-}
-class XmlStringOutputBufferHandler {
-  constructor() {
-    this._result = "";
-    this._decoder = new TextDecoder();
-  }
-  write(buf) {
-    this._result += this._decoder.decode(buf);
-    return buf.byteLength;
-  }
-  close() {
-    return true;
-  }
-  get result() {
-    return this._result;
-  }
-}
 const scriptRel = "modulepreload";
 const assetsURL = function(dep, importerUrl) {
   return new URL(dep, importerUrl).href;
@@ -211,7 +178,8 @@ var Module = /* @__PURE__ */ (() => {
       if (numericVersion < 16e4) {
         throw new Error("This emscripten-generated code requires node v16.0.0 (detected v" + nodeVersion + ")");
       }
-      var nodePath = path;
+      var fs = require2("fs");
+      var nodePath = require2("path");
       if (_scriptName.startsWith("file:")) {
         scriptDirectory = nodePath.dirname(require2("url").fileURLToPath(_scriptName)) + "/";
       }
@@ -675,7 +643,7 @@ var Module = /* @__PURE__ */ (() => {
       }
     };
     var PATH = {
-      isAbs: (path2) => path2.charAt(0) === "/",
+      isAbs: (path) => path.charAt(0) === "/",
       splitPath: (filename) => {
         var splitPathRe = /^(\/?|)([\s\S]*?)((?:\.{1,2}|[^\/]+?|)(\.[^.\/]*|))(?:[\/]*)$/;
         return splitPathRe.exec(filename).slice(1);
@@ -701,19 +669,19 @@ var Module = /* @__PURE__ */ (() => {
         }
         return parts;
       },
-      normalize: (path2) => {
-        var isAbsolute = PATH.isAbs(path2), trailingSlash = path2.slice(-1) === "/";
-        path2 = PATH.normalizeArray(path2.split("/").filter((p) => !!p), !isAbsolute).join("/");
-        if (!path2 && !isAbsolute) {
-          path2 = ".";
+      normalize: (path) => {
+        var isAbsolute = PATH.isAbs(path), trailingSlash = path.slice(-1) === "/";
+        path = PATH.normalizeArray(path.split("/").filter((p) => !!p), !isAbsolute).join("/");
+        if (!path && !isAbsolute) {
+          path = ".";
         }
-        if (path2 && trailingSlash) {
-          path2 += "/";
+        if (path && trailingSlash) {
+          path += "/";
         }
-        return (isAbsolute ? "/" : "") + path2;
+        return (isAbsolute ? "/" : "") + path;
       },
-      dirname: (path2) => {
-        var result = PATH.splitPath(path2), root = result[0], dir = result[1];
+      dirname: (path) => {
+        var result = PATH.splitPath(path), root = result[0], dir = result[1];
         if (!root && !dir) {
           return ".";
         }
@@ -722,7 +690,7 @@ var Module = /* @__PURE__ */ (() => {
         }
         return root + dir;
       },
-      basename: (path2) => path2 && path2.match(/([^\/]+|\/)\/*$/)[1],
+      basename: (path) => path && path.match(/([^\/]+|\/)\/*$/)[1],
       join: (...paths) => PATH.normalize(paths.join("/")),
       join2: (l, r) => PATH.normalize(l + "/" + r)
     };
@@ -740,14 +708,14 @@ var Module = /* @__PURE__ */ (() => {
       resolve: (...args) => {
         var resolvedPath = "", resolvedAbsolute = false;
         for (var i2 = args.length - 1; i2 >= -1 && !resolvedAbsolute; i2--) {
-          var path2 = i2 >= 0 ? args[i2] : FS.cwd();
-          if (typeof path2 != "string") {
+          var path = i2 >= 0 ? args[i2] : FS.cwd();
+          if (typeof path != "string") {
             throw new TypeError("Arguments to path.resolve must be strings");
-          } else if (!path2) {
+          } else if (!path) {
             return "";
           }
-          resolvedPath = path2 + "/" + resolvedPath;
-          resolvedAbsolute = PATH.isAbs(path2);
+          resolvedPath = path + "/" + resolvedPath;
+          resolvedAbsolute = PATH.isAbs(path);
         }
         resolvedPath = PATH.normalizeArray(resolvedPath.split("/").filter((p) => !!p), !resolvedAbsolute).join("/");
         return (resolvedAbsolute ? "/" : "") + resolvedPath || ".";
@@ -904,7 +872,8 @@ var Module = /* @__PURE__ */ (() => {
           if (result !== null) {
             result += "\n";
           }
-        } else ;
+        } else
+          ;
         if (!result) {
           return null;
         }
@@ -1651,16 +1620,16 @@ var Module = /* @__PURE__ */ (() => {
           return FS.isChrdev(this.mode);
         }
       },
-      lookupPath(path2, opts = {}) {
-        if (!path2) {
+      lookupPath(path, opts = {}) {
+        if (!path) {
           throw new FS.ErrnoError(44);
         }
         opts.follow_mount ??= true;
-        if (!PATH.isAbs(path2)) {
-          path2 = FS.cwd() + "/" + path2;
+        if (!PATH.isAbs(path)) {
+          path = FS.cwd() + "/" + path;
         }
         linkloop: for (var nlinks = 0; nlinks < 40; nlinks++) {
-          var parts = path2.split("/").filter((p) => !!p);
+          var parts = path.split("/").filter((p) => !!p);
           var current = FS.root;
           var current_path = "/";
           for (var i2 = 0; i2 < parts.length; i2++) {
@@ -1674,7 +1643,7 @@ var Module = /* @__PURE__ */ (() => {
             if (parts[i2] === "..") {
               current_path = PATH.dirname(current_path);
               if (FS.isRoot(current)) {
-                path2 = current_path + "/" + parts.slice(i2 + 1).join("/");
+                path = current_path + "/" + parts.slice(i2 + 1).join("/");
                 continue linkloop;
               } else {
                 current = current.parent;
@@ -1701,7 +1670,7 @@ var Module = /* @__PURE__ */ (() => {
               if (!PATH.isAbs(link)) {
                 link = PATH.dirname(current_path) + "/" + link;
               }
-              path2 = link + "/" + parts.slice(i2 + 1).join("/");
+              path = link + "/" + parts.slice(i2 + 1).join("/");
               continue linkloop;
             }
           }
@@ -1710,14 +1679,14 @@ var Module = /* @__PURE__ */ (() => {
         throw new FS.ErrnoError(32);
       },
       getPath(node) {
-        var path2;
+        var path;
         while (true) {
           if (FS.isRoot(node)) {
             var mount = node.mount.mountpoint;
-            if (!path2) return mount;
-            return mount[mount.length - 1] !== "/" ? `${mount}/${path2}` : mount + path2;
+            if (!path) return mount;
+            return mount[mount.length - 1] !== "/" ? `${mount}/${path}` : mount + path;
           }
-          path2 = path2 ? `${node.name}/${path2}` : node.name;
+          path = path ? `${node.name}/${path}` : node.name;
           node = node.parent;
         }
       },
@@ -2049,10 +2018,10 @@ var Module = /* @__PURE__ */ (() => {
       lookup(parent, name) {
         return parent.node_ops.lookup(parent, name);
       },
-      mknod(path2, mode, dev) {
-        var lookup = FS.lookupPath(path2, { parent: true });
+      mknod(path, mode, dev) {
+        var lookup = FS.lookupPath(path, { parent: true });
         var parent = lookup.node;
-        var name = PATH.basename(path2);
+        var name = PATH.basename(path);
         if (!name) {
           throw new FS.ErrnoError(28);
         }
@@ -2068,8 +2037,8 @@ var Module = /* @__PURE__ */ (() => {
         }
         return parent.node_ops.mknod(parent, name, mode, dev);
       },
-      statfs(path2) {
-        return FS.statfsNode(FS.lookupPath(path2, { follow: true }).node);
+      statfs(path) {
+        return FS.statfsNode(FS.lookupPath(path, { follow: true }).node);
       },
       statfsStream(stream) {
         return FS.statfsNode(stream.node);
@@ -2092,22 +2061,22 @@ var Module = /* @__PURE__ */ (() => {
         }
         return rtn;
       },
-      create(path2, mode = 438) {
+      create(path, mode = 438) {
         mode &= 4095;
         mode |= 32768;
-        return FS.mknod(path2, mode, 0);
+        return FS.mknod(path, mode, 0);
       },
-      mkdir(path2, mode = 511) {
+      mkdir(path, mode = 511) {
         mode &= 511 | 512;
         mode |= 16384;
-        return FS.mknod(path2, mode, 0);
+        return FS.mknod(path, mode, 0);
       },
-      mkdirTree(path2, mode) {
-        var dirs = path2.split("/");
+      mkdirTree(path, mode) {
+        var dirs = path.split("/");
         var d = "";
         for (var dir of dirs) {
           if (!dir) continue;
-          if (d || PATH.isAbs(path2)) d += "/";
+          if (d || PATH.isAbs(path)) d += "/";
           d += dir;
           try {
             FS.mkdir(d, mode);
@@ -2116,13 +2085,13 @@ var Module = /* @__PURE__ */ (() => {
           }
         }
       },
-      mkdev(path2, mode, dev) {
+      mkdev(path, mode, dev) {
         if (typeof dev == "undefined") {
           dev = mode;
           mode = 438;
         }
         mode |= 8192;
-        return FS.mknod(path2, mode, dev);
+        return FS.mknod(path, mode, dev);
       },
       symlink(oldpath, newpath) {
         if (!PATH_FS.resolve(oldpath)) {
@@ -2205,10 +2174,10 @@ var Module = /* @__PURE__ */ (() => {
           FS.hashAddNode(old_node);
         }
       },
-      rmdir(path2) {
-        var lookup = FS.lookupPath(path2, { parent: true });
+      rmdir(path) {
+        var lookup = FS.lookupPath(path, { parent: true });
         var parent = lookup.node;
-        var name = PATH.basename(path2);
+        var name = PATH.basename(path);
         var node = FS.lookupNode(parent, name);
         var errCode = FS.mayDelete(parent, name, true);
         if (errCode) {
@@ -2223,19 +2192,19 @@ var Module = /* @__PURE__ */ (() => {
         parent.node_ops.rmdir(parent, name);
         FS.destroyNode(node);
       },
-      readdir(path2) {
-        var lookup = FS.lookupPath(path2, { follow: true });
+      readdir(path) {
+        var lookup = FS.lookupPath(path, { follow: true });
         var node = lookup.node;
         var readdir = FS.checkOpExists(node.node_ops.readdir, 54);
         return readdir(node);
       },
-      unlink(path2) {
-        var lookup = FS.lookupPath(path2, { parent: true });
+      unlink(path) {
+        var lookup = FS.lookupPath(path, { parent: true });
         var parent = lookup.node;
         if (!parent) {
           throw new FS.ErrnoError(44);
         }
-        var name = PATH.basename(path2);
+        var name = PATH.basename(path);
         var node = FS.lookupNode(parent, name);
         var errCode = FS.mayDelete(parent, name, false);
         if (errCode) {
@@ -2250,8 +2219,8 @@ var Module = /* @__PURE__ */ (() => {
         parent.node_ops.unlink(parent, name);
         FS.destroyNode(node);
       },
-      readlink(path2) {
-        var lookup = FS.lookupPath(path2);
+      readlink(path) {
+        var lookup = FS.lookupPath(path);
         var link = lookup.node;
         if (!link) {
           throw new FS.ErrnoError(44);
@@ -2261,8 +2230,8 @@ var Module = /* @__PURE__ */ (() => {
         }
         return link.node_ops.readlink(link);
       },
-      stat(path2, dontFollow) {
-        var lookup = FS.lookupPath(path2, { follow: !dontFollow });
+      stat(path, dontFollow) {
+        var lookup = FS.lookupPath(path, { follow: !dontFollow });
         var node = lookup.node;
         var getattr = FS.checkOpExists(node.node_ops.getattr, 63);
         return getattr(node);
@@ -2276,8 +2245,8 @@ var Module = /* @__PURE__ */ (() => {
         FS.checkOpExists(getattr, 63);
         return getattr(arg);
       },
-      lstat(path2) {
-        return FS.stat(path2, true);
+      lstat(path) {
+        return FS.stat(path, true);
       },
       doChmod(stream, node, mode, dontFollow) {
         FS.doSetAttr(stream, node, {
@@ -2286,18 +2255,18 @@ var Module = /* @__PURE__ */ (() => {
           dontFollow
         });
       },
-      chmod(path2, mode, dontFollow) {
+      chmod(path, mode, dontFollow) {
         var node;
-        if (typeof path2 == "string") {
-          var lookup = FS.lookupPath(path2, { follow: !dontFollow });
+        if (typeof path == "string") {
+          var lookup = FS.lookupPath(path, { follow: !dontFollow });
           node = lookup.node;
         } else {
-          node = path2;
+          node = path;
         }
         FS.doChmod(null, node, mode, dontFollow);
       },
-      lchmod(path2, mode) {
-        FS.chmod(path2, mode, true);
+      lchmod(path, mode) {
+        FS.chmod(path, mode, true);
       },
       fchmod(fd, mode) {
         var stream = FS.getStreamChecked(fd);
@@ -2310,18 +2279,18 @@ var Module = /* @__PURE__ */ (() => {
           // we ignore the uid / gid for now
         });
       },
-      chown(path2, uid, gid, dontFollow) {
+      chown(path, uid, gid, dontFollow) {
         var node;
-        if (typeof path2 == "string") {
-          var lookup = FS.lookupPath(path2, { follow: !dontFollow });
+        if (typeof path == "string") {
+          var lookup = FS.lookupPath(path, { follow: !dontFollow });
           node = lookup.node;
         } else {
-          node = path2;
+          node = path;
         }
         FS.doChown(null, node, dontFollow);
       },
-      lchown(path2, uid, gid) {
-        FS.chown(path2, uid, gid, true);
+      lchown(path, uid, gid) {
+        FS.chown(path, uid, gid, true);
       },
       fchown(fd, uid, gid) {
         var stream = FS.getStreamChecked(fd);
@@ -2343,16 +2312,16 @@ var Module = /* @__PURE__ */ (() => {
           timestamp: Date.now()
         });
       },
-      truncate(path2, len) {
+      truncate(path, len) {
         if (len < 0) {
           throw new FS.ErrnoError(28);
         }
         var node;
-        if (typeof path2 == "string") {
-          var lookup = FS.lookupPath(path2, { follow: true });
+        if (typeof path == "string") {
+          var lookup = FS.lookupPath(path, { follow: true });
           node = lookup.node;
         } else {
-          node = path2;
+          node = path;
         }
         FS.doTruncate(null, node, len);
       },
@@ -2363,8 +2332,8 @@ var Module = /* @__PURE__ */ (() => {
         }
         FS.doTruncate(stream, stream.node, len);
       },
-      utime(path2, atime, mtime) {
-        var lookup = FS.lookupPath(path2, { follow: true });
+      utime(path, atime, mtime) {
+        var lookup = FS.lookupPath(path, { follow: true });
         var node = lookup.node;
         var setattr = FS.checkOpExists(node.node_ops.setattr, 63);
         setattr(node, {
@@ -2372,8 +2341,8 @@ var Module = /* @__PURE__ */ (() => {
           mtime
         });
       },
-      open(path2, flags, mode = 438) {
-        if (path2 === "") {
+      open(path, flags, mode = 438) {
+        if (path === "") {
           throw new FS.ErrnoError(44);
         }
         flags = typeof flags == "string" ? FS_modeStringToFlags(flags) : flags;
@@ -2384,16 +2353,16 @@ var Module = /* @__PURE__ */ (() => {
         }
         var node;
         var isDirPath;
-        if (typeof path2 == "object") {
-          node = path2;
+        if (typeof path == "object") {
+          node = path;
         } else {
-          isDirPath = path2.endsWith("/");
-          var lookup = FS.lookupPath(path2, {
+          isDirPath = path.endsWith("/");
+          var lookup = FS.lookupPath(path, {
             follow: !(flags & 131072),
             noent_okay: true
           });
           node = lookup.node;
-          path2 = lookup.path;
+          path = lookup.path;
         }
         var created = false;
         if (flags & 64) {
@@ -2404,7 +2373,7 @@ var Module = /* @__PURE__ */ (() => {
           } else if (isDirPath) {
             throw new FS.ErrnoError(31);
           } else {
-            node = FS.mknod(path2, mode | 511, 0);
+            node = FS.mknod(path, mode | 511, 0);
             created = true;
           }
         }
@@ -2446,8 +2415,8 @@ var Module = /* @__PURE__ */ (() => {
           FS.chmod(node, mode & 511);
         }
         if (Module2["logReadFiles"] && !(flags & 1)) {
-          if (!(path2 in FS.readFiles)) {
-            FS.readFiles[path2] = 1;
+          if (!(path in FS.readFiles)) {
+            FS.readFiles[path] = 1;
           }
         }
         return stream;
@@ -2570,15 +2539,15 @@ var Module = /* @__PURE__ */ (() => {
         }
         return stream.stream_ops.ioctl(stream, cmd, arg);
       },
-      readFile(path2, opts = {}) {
+      readFile(path, opts = {}) {
         opts.flags = opts.flags || 0;
         opts.encoding = opts.encoding || "binary";
         if (opts.encoding !== "utf8" && opts.encoding !== "binary") {
           throw new Error(`Invalid encoding type "${opts.encoding}"`);
         }
         var ret;
-        var stream = FS.open(path2, opts.flags);
-        var stat = FS.stat(path2);
+        var stream = FS.open(path, opts.flags);
+        var stat = FS.stat(path);
         var length = stat.size;
         var buf = new Uint8Array(length);
         FS.read(stream, buf, 0, length, 0);
@@ -2590,9 +2559,9 @@ var Module = /* @__PURE__ */ (() => {
         FS.close(stream);
         return ret;
       },
-      writeFile(path2, data, opts = {}) {
+      writeFile(path, data, opts = {}) {
         opts.flags = opts.flags || 577;
-        var stream = FS.open(path2, opts.flags, opts.mode);
+        var stream = FS.open(path, opts.flags, opts.mode);
         if (typeof data == "string") {
           var buf = new Uint8Array(lengthBytesUTF8(data) + 1);
           var actualNumBytes = stringToUTF8Array(data, buf, 0, buf.length);
@@ -2605,8 +2574,8 @@ var Module = /* @__PURE__ */ (() => {
         FS.close(stream);
       },
       cwd: () => FS.currentPath,
-      chdir(path2) {
-        var lookup = FS.lookupPath(path2, { follow: true });
+      chdir(path) {
+        var lookup = FS.lookupPath(path, { follow: true });
         if (lookup.node === null) {
           throw new FS.ErrnoError(44);
         }
@@ -2730,17 +2699,17 @@ var Module = /* @__PURE__ */ (() => {
           }
         }
       },
-      findObject(path2, dontResolveLastLink) {
-        var ret = FS.analyzePath(path2, dontResolveLastLink);
+      findObject(path, dontResolveLastLink) {
+        var ret = FS.analyzePath(path, dontResolveLastLink);
         if (!ret.exists) {
           return null;
         }
         return ret.object;
       },
-      analyzePath(path2, dontResolveLastLink) {
+      analyzePath(path, dontResolveLastLink) {
         try {
-          var lookup = FS.lookupPath(path2, { follow: !dontResolveLastLink });
-          path2 = lookup.path;
+          var lookup = FS.lookupPath(path, { follow: !dontResolveLastLink });
+          path = lookup.path;
         } catch (e) {
         }
         var ret = {
@@ -2755,12 +2724,12 @@ var Module = /* @__PURE__ */ (() => {
           parentObject: null
         };
         try {
-          var lookup = FS.lookupPath(path2, { parent: true });
+          var lookup = FS.lookupPath(path, { parent: true });
           ret.parentExists = true;
           ret.parentPath = lookup.path;
           ret.parentObject = lookup.node;
-          ret.name = PATH.basename(path2);
-          lookup = FS.lookupPath(path2, { follow: !dontResolveLastLink });
+          ret.name = PATH.basename(path);
+          lookup = FS.lookupPath(path, { follow: !dontResolveLastLink });
           ret.exists = true;
           ret.path = lookup.path;
           ret.object = lookup.node;
@@ -2771,9 +2740,9 @@ var Module = /* @__PURE__ */ (() => {
         }
         return ret;
       },
-      createPath(parent, path2, canRead, canWrite) {
+      createPath(parent, path, canRead, canWrite) {
         parent = typeof parent == "string" ? parent : FS.getPath(parent);
-        var parts = path2.split("/").reverse();
+        var parts = path.split("/").reverse();
         while (parts.length) {
           var part = parts.pop();
           if (!part) continue;
@@ -2788,18 +2757,18 @@ var Module = /* @__PURE__ */ (() => {
         return current;
       },
       createFile(parent, name, properties, canRead, canWrite) {
-        var path2 = PATH.join2(typeof parent == "string" ? parent : FS.getPath(parent), name);
+        var path = PATH.join2(typeof parent == "string" ? parent : FS.getPath(parent), name);
         var mode = FS_getMode(canRead, canWrite);
-        return FS.create(path2, mode);
+        return FS.create(path, mode);
       },
       createDataFile(parent, name, data, canRead, canWrite, canOwn) {
-        var path2 = name;
+        var path = name;
         if (parent) {
           parent = typeof parent == "string" ? parent : FS.getPath(parent);
-          path2 = name ? PATH.join2(parent, name) : parent;
+          path = name ? PATH.join2(parent, name) : parent;
         }
         var mode = FS_getMode(canRead, canWrite);
-        var node = FS.create(path2, mode);
+        var node = FS.create(path, mode);
         if (data) {
           if (typeof data == "string") {
             var arr = new Array(data.length);
@@ -2814,7 +2783,7 @@ var Module = /* @__PURE__ */ (() => {
         }
       },
       createDevice(parent, name, input, output) {
-        var path2 = PATH.join2(typeof parent == "string" ? parent : FS.getPath(parent), name);
+        var path = PATH.join2(typeof parent == "string" ? parent : FS.getPath(parent), name);
         var mode = FS_getMode(!!input, !!output);
         FS.createDevice.major ??= 64;
         var dev = FS.makedev(FS.createDevice.major++, 0);
@@ -2862,7 +2831,7 @@ var Module = /* @__PURE__ */ (() => {
             return i2;
           }
         });
-        return FS.mkdev(path2, mode, dev);
+        return FS.mkdev(path, mode, dev);
       },
       forceLoadFile(obj) {
         if (obj.isDevice || obj.isFolder || obj.link || obj.contents) return true;
@@ -3042,9 +3011,9 @@ var Module = /* @__PURE__ */ (() => {
     };
     var SYSCALLS = {
       DEFAULT_POLLMASK: 5,
-      calculateAt(dirfd, path2, allowEmpty) {
-        if (PATH.isAbs(path2)) {
-          return path2;
+      calculateAt(dirfd, path, allowEmpty) {
+        if (PATH.isAbs(path)) {
+          return path;
         }
         var dir;
         if (dirfd === -100) {
@@ -3053,13 +3022,13 @@ var Module = /* @__PURE__ */ (() => {
           var dirstream = SYSCALLS.getStreamFromFD(dirfd);
           dir = dirstream.path;
         }
-        if (path2.length == 0) {
+        if (path.length == 0) {
           if (!allowEmpty) {
             throw new FS.ErrnoError(44);
           }
           return dir;
         }
-        return dir + "/" + path2;
+        return dir + "/" + path;
       },
       writeStat(buf, stat) {
         HEAP32[buf >> 2] = stat.dev;
@@ -3132,24 +3101,24 @@ var Module = /* @__PURE__ */ (() => {
         return -e.errno;
       }
     }
-    function ___syscall_lstat64(path2, buf) {
+    function ___syscall_lstat64(path, buf) {
       try {
-        path2 = SYSCALLS.getStr(path2);
-        return SYSCALLS.writeStat(buf, FS.lstat(path2));
+        path = SYSCALLS.getStr(path);
+        return SYSCALLS.writeStat(buf, FS.lstat(path));
       } catch (e) {
         if (typeof FS == "undefined" || !(e.name === "ErrnoError")) throw e;
         return -e.errno;
       }
     }
-    function ___syscall_newfstatat(dirfd, path2, buf, flags) {
+    function ___syscall_newfstatat(dirfd, path, buf, flags) {
       try {
-        path2 = SYSCALLS.getStr(path2);
+        path = SYSCALLS.getStr(path);
         var nofollow = flags & 256;
         var allowEmpty = flags & 4096;
         flags = flags & ~6400;
         assert(!flags, `unknown flags in __syscall_newfstatat: ${flags}`);
-        path2 = SYSCALLS.calculateAt(dirfd, path2, allowEmpty);
-        return SYSCALLS.writeStat(buf, nofollow ? FS.lstat(path2) : FS.stat(path2));
+        path = SYSCALLS.calculateAt(dirfd, path, allowEmpty);
+        return SYSCALLS.writeStat(buf, nofollow ? FS.lstat(path) : FS.stat(path));
       } catch (e) {
         if (typeof FS == "undefined" || !(e.name === "ErrnoError")) throw e;
         return -e.errno;
@@ -3161,22 +3130,22 @@ var Module = /* @__PURE__ */ (() => {
       SYSCALLS.varargs += 4;
       return ret;
     };
-    function ___syscall_openat(dirfd, path2, flags, varargs) {
+    function ___syscall_openat(dirfd, path, flags, varargs) {
       SYSCALLS.varargs = varargs;
       try {
-        path2 = SYSCALLS.getStr(path2);
-        path2 = SYSCALLS.calculateAt(dirfd, path2);
+        path = SYSCALLS.getStr(path);
+        path = SYSCALLS.calculateAt(dirfd, path);
         var mode = varargs ? syscallGetVarargI() : 0;
-        return FS.open(path2, flags, mode).fd;
+        return FS.open(path, flags, mode).fd;
       } catch (e) {
         if (typeof FS == "undefined" || !(e.name === "ErrnoError")) throw e;
         return -e.errno;
       }
     }
-    function ___syscall_stat64(path2, buf) {
+    function ___syscall_stat64(path, buf) {
       try {
-        path2 = SYSCALLS.getStr(path2);
-        return SYSCALLS.writeStat(buf, FS.stat(path2));
+        path = SYSCALLS.getStr(path);
+        return SYSCALLS.writeStat(buf, FS.stat(path));
       } catch (e) {
         if (typeof FS == "undefined" || !(e.name === "ErrnoError")) throw e;
         return -e.errno;
@@ -4207,6 +4176,39 @@ var Module = /* @__PURE__ */ (() => {
     return moduleRtn;
   });
 })();
+class ContextStorage {
+  constructor() {
+    this.storage = /* @__PURE__ */ new Map();
+    this.index = 0;
+  }
+  allocate(value) {
+    this.index += 1;
+    this.storage.set(this.index, value);
+    return this.index;
+  }
+  free(index) {
+    this.storage.delete(index);
+  }
+  get(index) {
+    return this.storage.get(index);
+  }
+}
+class XmlStringOutputBufferHandler {
+  constructor() {
+    this._result = "";
+    this._decoder = new TextDecoder();
+  }
+  write(buf) {
+    this._result += this._decoder.decode(buf);
+    return buf.byteLength;
+  }
+  close() {
+    return true;
+  }
+  get result() {
+    return this._result;
+  }
+}
 const libxml2 = await Module();
 libxml2._xmlInitParser();
 class XmlError extends Error {
@@ -5940,13 +5942,13 @@ async function createMapInputProvider(map) {
       return k;
     }
   };
-  const basename = (path2) => {
+  const basename = (path) => {
     try {
-      const u = new URL(path2);
-      return u.pathname.split("/").pop() || path2;
+      const u = new URL(path);
+      return u.pathname.split("/").pop() || path;
     } catch {
-      const parts = path2.split("/");
-      return parts[parts.length - 1] || path2;
+      const parts = path.split("/");
+      return parts[parts.length - 1] || path;
     }
   };
   if (map instanceof Map) {
@@ -6383,6 +6385,28 @@ async function validate(data, stopOnFailure) {
           if (stopOnFailure) return bags.length ? Promise.reject(bags) : Promise.resolve(bags);
         }
       }
+      if (option.notations.systemId) {
+        if (allowedNotation && allowedNotation.find((n) => n.name === notation.name)) {
+          if (notation.systemId && !allowedNotation.find((n) => n.systemId === notation.systemId)) {
+            bags.push({
+              "name": "NotationNotValid",
+              "type": "dtd",
+              "detail": {
+                "message": `Notation ${notation.name} with system id ${notation.systemId} is not available`,
+                "file": "",
+                "line": 1,
+                "col": 1
+              }
+            });
+            if (stopOnFailure) return bags.length ? Promise.reject(bags) : Promise.resolve(bags);
+          }
+        }
+        let isnv;
+        if (isnv = isNotValidName(notation.systemId, true)) {
+          bags.push(isnv);
+          if (stopOnFailure) return bags.length ? Promise.reject(bags) : Promise.resolve(bags);
+        }
+      }
       if (option.notations.name) {
         if (allowedNotation) {
           if (!allowedNotation.find((n) => n.name === notation.name)) {
@@ -6466,7 +6490,7 @@ self.Option_XmlEntityNotation = defaultEntityNotationValidationOption;
 function WorkerWrapper() {
   return new Worker(new URL(
     /* @vite-ignore */
-    "" + new URL("assets/validator.worker-CxWee7Sy.js", import.meta.url).href,
+    "" + new URL("assets/validator.worker-eVWJgx4G.js", import.meta.url).href,
     import.meta.url
   ), {
     type: "module"
