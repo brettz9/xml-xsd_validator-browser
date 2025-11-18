@@ -1,0 +1,11 @@
+export { createMapInputProvider } from './provider/MapInputProvider.js';
+export { findRequiredSchemas, detectSchemaLocation, findRequiredDtds, getSchemaText, isXmlLike, resolveUri, constructEntityNotationValidationOption } from './util/helper.js';
+export { useWorker, baseUri, validateXml, getS1000dDocParseOption, getS1000dAllowedNotation, XmlDocumentParseOption, XmlEntityNotationOption } from './validate.js';
+export { validateWellForm } from "./validateFormWell.js";
+export { validateXmlTowardXsd } from "./validateTowardXsd.js";
+export { validateEntityNotation } from "./validateDtd.js";
+export { ensureLibxml2Loaded, useLibXml2 } from "./libxml/libxmlloader.js";
+export { ParseOption } from "libxml2-wasm";
+export * from "./types/types.js";
+export * from "./plugins/viteWorkerPlugin.js";
+export * from "./plugins/esBuildIgnoreModuleImportPlugin.js";
