@@ -6383,6 +6383,28 @@ async function validate(data, stopOnFailure) {
           if (stopOnFailure) return bags.length ? Promise.reject(bags) : Promise.resolve(bags);
         }
       }
+      if (option.notations.systemId) {
+        if (allowedNotation && allowedNotation.find((n) => n.name === notation.name)) {
+          if (notation.systemId && !allowedNotation.find((n) => n.systemId === notation.systemId)) {
+            bags.push({
+              "name": "NotationNotValid",
+              "type": "dtd",
+              "detail": {
+                "message": `Notation ${notation.name} with system id ${notation.systemId} is not available`,
+                "file": "",
+                "line": 1,
+                "col": 1
+              }
+            });
+            if (stopOnFailure) return bags.length ? Promise.reject(bags) : Promise.resolve(bags);
+          }
+        }
+        let isnv;
+        if (isnv = isNotValidName(notation.systemId, true)) {
+          bags.push(isnv);
+          if (stopOnFailure) return bags.length ? Promise.reject(bags) : Promise.resolve(bags);
+        }
+      }
       if (option.notations.name) {
         if (allowedNotation) {
           if (!allowedNotation.find((n) => n.name === notation.name)) {
@@ -6466,7 +6488,7 @@ self.Option_XmlEntityNotation = defaultEntityNotationValidationOption;
 function WorkerWrapper() {
   return new Worker(new URL(
     /* @vite-ignore */
-    "" + new URL("assets/validator.worker-CxWee7Sy.js", import.meta.url).href,
+    "" + new URL("assets/validator.worker-BfEqEuvc.js", import.meta.url).href,
     import.meta.url
   ), {
     type: "module"

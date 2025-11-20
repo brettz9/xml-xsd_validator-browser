@@ -19,8 +19,8 @@ export default defineConfig({
     },
   },
   plugins: [
-    workerPlugin(), // ⬅️ gunakan plugin custom kamu
-    ignoreModuleImportPlugin()
+    //workerPlugin(), // ⬅️ gunakan plugin custom kamu
+    //ignoreModuleImportPlugin()
   ],
   worker: {
     format: "es",
@@ -30,7 +30,7 @@ export default defineConfig({
     //     entryFileNames: "[name].js", // just in case
     //   },
     // },
-    plugins: [ignoreModuleImportPlugin()]
+    // plugins: [ignoreModuleImportPlugin()]
   },
   resolve: {
     alias: {
