@@ -1,4 +1,4 @@
-[**xml-xsd-validator-browser v1.0.8**](../README.md)
+[**xml-xsd-validator-browser v1.0.9**](../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Interface: DtdInfo
 
-Defined in: [types/types.ts:219](https://github.com/ferdisap/xml-xsd_validator-browser/blob/406d29edb6fc8c8b93eca213ae57816c5b66ad03/src/types/types.ts#L219)
+Defined in: [types/types.ts:219](https://github.com/ferdisap/xml-xsd_validator-browser/blob/c0657eb472451eb74a19ec87b884ab96231ad7dd/src/types/types.ts#L219)
 
 ## Properties
 
@@ -14,7 +14,7 @@ Defined in: [types/types.ts:219](https://github.com/ferdisap/xml-xsd_validator-b
 
 > **type**: `"none"` \| `"external"` \| `"internal"` \| `"public"` \| `"public+external"`
 
-Defined in: [types/types.ts:220](https://github.com/ferdisap/xml-xsd_validator-browser/blob/406d29edb6fc8c8b93eca213ae57816c5b66ad03/src/types/types.ts#L220)
+Defined in: [types/types.ts:220](https://github.com/ferdisap/xml-xsd_validator-browser/blob/c0657eb472451eb74a19ec87b884ab96231ad7dd/src/types/types.ts#L220)
 
 ***
 
@@ -22,7 +22,7 @@ Defined in: [types/types.ts:220](https://github.com/ferdisap/xml-xsd_validator-b
 
 > **publicId**: `string` \| `null`
 
-Defined in: [types/types.ts:221](https://github.com/ferdisap/xml-xsd_validator-browser/blob/406d29edb6fc8c8b93eca213ae57816c5b66ad03/src/types/types.ts#L221)
+Defined in: [types/types.ts:221](https://github.com/ferdisap/xml-xsd_validator-browser/blob/c0657eb472451eb74a19ec87b884ab96231ad7dd/src/types/types.ts#L221)
 
 ***
 
@@ -30,7 +30,7 @@ Defined in: [types/types.ts:221](https://github.com/ferdisap/xml-xsd_validator-b
 
 > **systemId**: `string` \| `null`
 
-Defined in: [types/types.ts:222](https://github.com/ferdisap/xml-xsd_validator-browser/blob/406d29edb6fc8c8b93eca213ae57816c5b66ad03/src/types/types.ts#L222)
+Defined in: [types/types.ts:222](https://github.com/ferdisap/xml-xsd_validator-browser/blob/c0657eb472451eb74a19ec87b884ab96231ad7dd/src/types/types.ts#L222)
 
 ***
 
@@ -38,7 +38,7 @@ Defined in: [types/types.ts:222](https://github.com/ferdisap/xml-xsd_validator-b
 
 > **rootName**: `string` \| `null`
 
-Defined in: [types/types.ts:223](https://github.com/ferdisap/xml-xsd_validator-browser/blob/406d29edb6fc8c8b93eca213ae57816c5b66ad03/src/types/types.ts#L223)
+Defined in: [types/types.ts:223](https://github.com/ferdisap/xml-xsd_validator-browser/blob/c0657eb472451eb74a19ec87b884ab96231ad7dd/src/types/types.ts#L223)
 
 ***
 
@@ -46,7 +46,7 @@ Defined in: [types/types.ts:223](https://github.com/ferdisap/xml-xsd_validator-b
 
 > **internalSubset**: `string` \| `null`
 
-Defined in: [types/types.ts:224](https://github.com/ferdisap/xml-xsd_validator-browser/blob/406d29edb6fc8c8b93eca213ae57816c5b66ad03/src/types/types.ts#L224)
+Defined in: [types/types.ts:224](https://github.com/ferdisap/xml-xsd_validator-browser/blob/c0657eb472451eb74a19ec87b884ab96231ad7dd/src/types/types.ts#L224)
 
 ***
 
@@ -54,7 +54,7 @@ Defined in: [types/types.ts:224](https://github.com/ferdisap/xml-xsd_validator-b
 
 > **hasInternal**: `boolean`
 
-Defined in: [types/types.ts:225](https://github.com/ferdisap/xml-xsd_validator-browser/blob/406d29edb6fc8c8b93eca213ae57816c5b66ad03/src/types/types.ts#L225)
+Defined in: [types/types.ts:225](https://github.com/ferdisap/xml-xsd_validator-browser/blob/c0657eb472451eb74a19ec87b884ab96231ad7dd/src/types/types.ts#L225)
 
 ***
 
@@ -62,4 +62,4 @@ Defined in: [types/types.ts:225](https://github.com/ferdisap/xml-xsd_validator-b
 
 > **hasExternal**: `boolean`
 
-Defined in: [types/types.ts:226](https://github.com/ferdisap/xml-xsd_validator-browser/blob/406d29edb6fc8c8b93eca213ae57816c5b66ad03/src/types/types.ts#L226)
+Defined in: [types/types.ts:226](https://github.com/ferdisap/xml-xsd_validator-browser/blob/c0657eb472451eb74a19ec87b884ab96231ad7dd/src/types/types.ts#L226)

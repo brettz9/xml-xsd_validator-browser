@@ -214,7 +214,7 @@ export function useWorker(): UseWorker {
         }
         if(_onBefore) wpd.payload.onBefore = _onBefore
         // console.log("before post to worker");
-        console.log(wpd)
+        // console.log(wpd)
         validatorWorker!.postMessage(wpd)
       }
     })

@@ -6191,7 +6191,7 @@ async function validateXmlTowardXsd(file, mainSchemaUrl = null, stopOnFailure = 
     }
   }
   provider?.cleanup();
-  return Promise.reject(bags);
+  return bags;
 }
 function findRequiredDtd(xmlText) {
   const doctypeRegex = /<!DOCTYPE\s+([^\s>]+)\s+([^>]*)>/i;
@@ -6461,10 +6461,10 @@ async function validateEntityNotation(xmlText, stopOnFailure = true) {
   return validate(await findEntitysNotations(findRequiredDtd(xmlText)), stopOnFailure);
 }
 function XmlDocumentParseOption(opt = null) {
-  return typeof opt === "number" ? self.Option_XmlDocumentParse = opt : self.Option_XmlDocumentParse;
+  return typeof opt === "number" ? globalThis.Option_XmlDocumentParse = opt : globalThis.Option_XmlDocumentParse;
 }
 function XmlEntityNotationOption(opt = null) {
-  return opt ? self.Option_XmlEntityNotation = opt : self.Option_XmlEntityNotation;
+  return opt ? globalThis.Option_XmlEntityNotation = opt : globalThis.Option_XmlEntityNotation;
 }
 ParseOption.XML_PARSE_DTDLOAD | // Load external DTD
 ParseOption.XML_PARSE_DTDATTR | // Default attributes from DTD
@@ -6482,13 +6482,13 @@ const defaultEntityNotationValidationOption = {
     publicId: true
   }
 };
-self.uri = "";
-self.Option_XmlDocumentParse = ParseOption.XML_PARSE_DEFAULT;
-self.Option_XmlEntityNotation = defaultEntityNotationValidationOption;
+globalThis.uri = "";
+globalThis.Option_XmlDocumentParse = ParseOption.XML_PARSE_DEFAULT;
+globalThis.Option_XmlEntityNotation = defaultEntityNotationValidationOption;
 function WorkerWrapper() {
   return new Worker(new URL(
     /* @vite-ignore */
-    "" + new URL("assets/validator.worker-BfEqEuvc.js", import.meta.url).href,
+    "" + new URL("assets/validator.worker-6TMIgdu-.js", import.meta.url).href,
     import.meta.url
   ), {
     type: "module"
@@ -6496,12 +6496,12 @@ function WorkerWrapper() {
 }
 function baseUri(uri = null) {
   if (uri) {
-    self.uri = uri;
+    globalThis.uri = uri;
   }
   try {
     return window.location.href;
   } catch (e) {
-    return self.uri;
+    return globalThis.uri;
   }
 }
 async function validateXml(xmlText, mainSchemaUrl = null, stopOnFailure = true) {

@@ -1,4 +1,4 @@
-[**xml-xsd-validator-browser v1.0.8**](../README.md)
+[**xml-xsd-validator-browser v1.0.9**](../README.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **ignoreModuleImportPlugin**(): `object`
 
-Defined in: [plugins/esBuildIgnoreModuleImportPlugin.ts:7](https://github.com/ferdisap/xml-xsd_validator-browser/blob/406d29edb6fc8c8b93eca213ae57816c5b66ad03/src/plugins/esBuildIgnoreModuleImportPlugin.ts#L7)
+Defined in: [plugins/esBuildIgnoreModuleImportPlugin.ts:7](https://github.com/ferdisap/xml-xsd_validator-browser/blob/c0657eb472451eb74a19ec87b884ab96231ad7dd/src/plugins/esBuildIgnoreModuleImportPlugin.ts#L7)
 
 Plugin untuk mengabaikan impor modul Node.js seperti 'module' saat build di browser.
 
